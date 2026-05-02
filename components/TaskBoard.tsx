@@ -1,6 +1,14 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  PartyPopper,
+  Sparkles,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -1177,6 +1185,12 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
   const showAllDoneCelebration = hasAnyTasks && activeCount === 0 && filter !== "done";
 
+  function focusNewTaskInput() {
+    const el = document.getElementById("task-input");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => (el as HTMLTextAreaElement | null)?.focus(), 280);
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1200px] overflow-x-clip px-3 pb-24 pt-2 handset:px-6 handset:pb-10 handset:pt-3">
       <section className="py-0.5 -mx-1 px-1 handset:mx-0 handset:px-0" aria-label="Week calendar">
@@ -1385,7 +1399,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
           </section>
 
           <section className="flex min-h-0 flex-1 flex-col gap-6 py-0">
-        {hasAnyTasks ? (
+        {hasAnyTasks && !showAllDoneCelebration ? (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-1.5">
               {(
@@ -1444,43 +1458,114 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
         <div className="min-h-0 flex-1 lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto lg:pr-1">
           {!hasAnyTasks ? (
-            <Card className="rounded-[12px] border-[#EEF3F7] bg-[#F5EFEB]/40 shadow-none">
-              <CardContent className="px-6 py-12 text-center handset:px-8">
-                <p className="font-[family-name:var(--font-cormorant)] text-[26px] font-normal italic leading-snug text-[#2F4156]">
+            <div
+              className="relative flex min-h-[min(52vh,26rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-14 text-center shadow-[0_4px_32px_rgba(47,65,86,0.06)] handset:min-h-[min(48vh,24rem)] handset:py-16"
+              role="region"
+              aria-label="No tasks yet"
+            >
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_60%_at_50%_-10%,rgba(245,239,235,0.95),transparent)]"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute -bottom-24 left-1/2 h-56 w-[min(100%,28rem)] -translate-x-1/2 rounded-full bg-[#E8EFFA]/35 blur-3xl"
+                aria-hidden
+              />
+              <div className="relative flex max-w-md flex-col items-center">
+                <div
+                  className="mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#F5EFEB] to-[#ECEEF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-[#EEF3F7]"
+                  aria-hidden
+                >
+                  <Sparkles className="h-9 w-9 text-[#567C8D]" strokeWidth={1.35} />
+                </div>
+                <p className="font-[family-name:var(--font-cormorant)] text-[clamp(1.65rem,4.8vw,2.1rem)] font-bold italic leading-tight text-[#2F4156]">
                   Your day is a blank canvas
                 </p>
                 <p
-                  className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-[#567C8D]"
+                  className="mx-auto mt-4 max-w-sm text-[14px] leading-relaxed text-[#567C8D]"
                   style={{ fontWeight: 400 }}
                 >
-                  Add your first task above — write it like you&apos;d tell a friend
+                  Add your first task above — write it like you&apos;d tell a friend.
                 </p>
-              </CardContent>
-            </Card>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={focusNewTaskInput}
+                  className="mt-8 h-auto min-h-[44px] rounded-full border-[#C8D9E6] bg-white px-6 py-2.5 text-[13px] font-medium text-[#2F4156] shadow-none hover:bg-[#F8FAFC]"
+                  style={{ fontWeight: 500 }}
+                >
+                  Start with the box above
+                </Button>
+              </div>
+            </div>
           ) : showAllDoneCelebration ? (
-            <Card className="rounded-[12px] border-[#EEF3F7] bg-white shadow-[0_2px_24px_rgba(47,65,86,0.06)]">
-              <CardContent className="px-6 py-12 text-center handset:px-8">
-                <p className="font-[family-name:var(--font-cormorant)] text-[28px] font-normal italic text-[#2F4156]">
-                  All done 🎉
+            <div
+              className="relative flex min-h-[min(58vh,32rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-16 text-center shadow-[0_4px_36px_rgba(47,65,86,0.07)] handset:min-h-[min(52vh,30rem)] handset:py-20"
+              role="status"
+              aria-live="polite"
+              aria-label="All active tasks completed"
+            >
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_-5%,rgba(232,239,250,0.75),transparent)]"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#F5EFEB]/90 blur-3xl"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute -bottom-28 -left-16 h-64 w-64 rounded-full bg-[#E4F4EC]/45 blur-3xl"
+                aria-hidden
+              />
+              <div className="relative flex max-w-lg flex-col items-center">
+                <div
+                  className="mb-6 flex h-[5rem] w-[5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#E8EFFA] via-[#F5EFEB] to-[#ECEEF6] shadow-[0_8px_28px_rgba(86,124,141,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-[#EEF3F7]"
+                  aria-hidden
+                >
+                  <PartyPopper className="h-11 w-11 text-[#567C8D]" strokeWidth={1.35} />
+                </div>
+                <p className="font-[family-name:var(--font-cormorant)] text-[clamp(1.85rem,5.5vw,2.35rem)] font-bold italic leading-[1.15] text-[#2F4156]">
+                  All done <span aria-hidden>🎉</span>
                 </p>
-                <p className="mt-3 text-[14px] text-[#567C8D]" style={{ fontWeight: 400 }}>
-                  Switch to &quot;Done&quot; to review, or add something new.
+                <p
+                  className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-[#567C8D]"
+                  style={{ fontWeight: 400 }}
+                >
+                  You cleared the list for this view. Enjoy the space — or line up what&apos;s next when
+                  you&apos;re ready.
                 </p>
-              </CardContent>
-            </Card>
+                <div className="mt-10 flex w-full max-w-sm flex-col items-stretch gap-3 handset:flex-row handset:justify-center handset:gap-3">
+                  <Button
+                    type="button"
+                    onClick={focusNewTaskInput}
+                    className="h-auto min-h-[48px] w-full rounded-[10px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 handset:min-h-0 handset:w-auto handset:px-8"
+                    style={{ fontWeight: 500 }}
+                  >
+                    Add a task
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFilter("done")}
+                    className="h-auto min-h-[48px] w-full rounded-[10px] border-[#C8D9E6] bg-white/80 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F8FAFC] handset:min-h-0 handset:w-auto handset:px-6"
+                    style={{ fontWeight: 500 }}
+                  >
+                    Review completed
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : sortedVisible.length === 0 ? (
-            <Card className="rounded-[12px] border border-dashed border-[#EEF3F7] bg-[#F5EFEB]/30 shadow-none">
-              <CardContent className="px-6 py-10 text-center handset:px-8">
-                <p className="font-[family-name:var(--font-cormorant)] text-[20px] italic text-[#567C8D]">
-                  Nothing in this view
-                </p>
-                <p className="mt-2 text-[13px] text-[#9BAFC0]" style={{ fontWeight: 400 }}>
-                  {visible.length === 0
-                    ? "Try another filter."
-                    : `No tasks for ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })} — tap another day above, or change a deadline.`}
-                </p>
-              </CardContent>
-            </Card>
+            <div className="rounded-[14px] border border-dashed border-[#E3EBF2] bg-gradient-to-b from-[#FFFCFA] to-[#F8FAFC] px-6 py-12 text-center shadow-none handset:px-10">
+              <p className="font-[family-name:var(--font-cormorant)] text-[22px] font-semibold italic leading-snug text-[#567C8D]">
+                Nothing in this view
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-[13px] leading-relaxed text-[#9BAFC0]" style={{ fontWeight: 400 }}>
+                {visible.length === 0
+                  ? "Try another filter, or switch back to All."
+                  : `No tasks for ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })} — pick another day above, or change a deadline.`}
+              </p>
+            </div>
           ) : (
             <ul className="flex flex-col gap-3">
               {sortedVisible.map((task) => {
