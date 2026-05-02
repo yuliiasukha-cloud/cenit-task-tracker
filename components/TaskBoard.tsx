@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -103,7 +104,8 @@ export type ProtocolCategoryKey =
   | "Mind"
   | "Social"
   | "Beauty"
-  | "Health";
+  | "Health"
+  | "Other";
 
 const PROTOCOL_CATEGORY_OPTIONS: ProtocolCategoryKey[] = [
   "Morning",
@@ -115,6 +117,7 @@ const PROTOCOL_CATEGORY_OPTIONS: ProtocolCategoryKey[] = [
   "Social",
   "Beauty",
   "Health",
+  "Other",
 ];
 
 const PROTOCOL_CATEGORY_STYLES: Record<
@@ -183,6 +186,13 @@ const PROTOCOL_CATEGORY_STYLES: Record<
     chipBg: "#E4F5F3",
     chipText: "#2F5E5A",
     short: "Health",
+  },
+  Other: {
+    dot: "#A8B4C4",
+    accent: "#6B7B8F",
+    chipBg: "#EEF2F6",
+    chipText: "#4A5568",
+    short: "Other",
   },
 };
 
@@ -352,13 +362,19 @@ function formatDeadline(iso: string | null) {
   }).format(d);
 }
 
-/** Time column for protocol rows (deadline time or em dash). */
-function formatProtocolTime(iso: string | null) {
+/** 24h HH:MM for protocol calendar column (matches demo block times). */
+function formatProtocolTime24(iso: string | null) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const d = new Date(iso);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function taskDeadlineToSortMinutes(deadline: string | null): number {
+  if (!deadline) return 24 * 60 + 59;
+  const d = new Date(deadline);
+  return d.getHours() * 60 + d.getMinutes();
 }
 
 /** Parse "HH:MM" / "H:MM" for timeline ordering (minutes from midnight). */
@@ -755,31 +771,89 @@ function TodaysProtocolColumn({
     [demoBlocks],
   );
 
+  type MergedEntry =
+    | { kind: "demo"; key: string; sortMin: number; block: DemoProtocolBlock }
+    | { kind: "task"; key: string; sortMin: number; task: TaskDTO };
+
+  const mergedTimeline = useMemo(() => {
+    const entries: MergedEntry[] = [];
+    for (const block of sortedDemoBlocks) {
+      entries.push({
+        kind: "demo",
+        key: `demo-${block.id}`,
+        sortMin: protocolTimeToMinutes(block.time),
+        block,
+      });
+    }
+    for (const task of protocolTasks) {
+      entries.push({
+        kind: "task",
+        key: `task-${task.id}`,
+        sortMin: taskDeadlineToSortMinutes(task.deadline),
+        task,
+      });
+    }
+    entries.sort((a, b) => {
+      if (a.sortMin !== b.sortMin) return a.sortMin - b.sortMin;
+      return a.key.localeCompare(b.key);
+    });
+    return entries;
+  }, [sortedDemoBlocks, protocolTasks]);
+
   return (
     <aside className="flex min-w-0 flex-[2] basis-0 flex-col lg:sticky lg:top-4 lg:self-start lg:pl-8">
       <p className={COLUMN_EYEBROW_CLASS}>Your protocol</p>
       <h2 className={cn(SECTION_HEADING_CLASS, "mb-4")}>Today&apos;s protocol</h2>
 
       <ul className="m-0 list-none space-y-0 p-0">
-        {sortedDemoBlocks.map((block) => (
-          <DemoProtocolTimelineBlock
-            key={block.id}
-            block={block}
-            isEditing={editingId === block.id}
-            draft={draft}
-            setDraft={setDraft}
-            isExiting={exitingIds.has(block.id)}
-            onRequestEdit={() => {
-              if (editingId && editingId !== block.id) {
-                cancelEdit();
+        {mergedTimeline.map((entry) => {
+          if (entry.kind === "demo") {
+            const block = entry.block;
+            return (
+              <DemoProtocolTimelineBlock
+                key={entry.key}
+                block={block}
+                isEditing={editingId === block.id}
+                draft={draft}
+                setDraft={setDraft}
+                isExiting={exitingIds.has(block.id)}
+                onRequestEdit={() => {
+                  if (editingId && editingId !== block.id) {
+                    cancelEdit();
+                  }
+                  startEdit(block);
+                }}
+                onDelete={() => removeBlock(block.id)}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            );
+          }
+          const task = entry.task;
+          const lane = priorityToProtocolLane(task.priority);
+          return (
+            <ProtocolRow
+              key={entry.key}
+              timeLabel={formatProtocolTime24(task.deadline)}
+              title={task.title}
+              subtitle={task.rawInput.length > 80 ? `${task.rawInput.slice(0, 80)}…` : task.rawInput}
+              lane={lane}
+              chipLabel={priorityShortLabel(task.priority)}
+              rightAction={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => onRemoveFromProtocol(task.id)}
+                  className="h-auto px-2 py-0 text-[10px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D]"
+                  style={{ fontWeight: 400 }}
+                >
+                  Remove
+                </Button>
               }
-              startEdit(block);
-            }}
-            onDelete={() => removeBlock(block.id)}
-            onSave={saveEdit}
-            onCancel={cancelEdit}
-          />
-        ))}
+            />
+          );
+        })}
       </ul>
 
       <div className="mt-3">
@@ -792,42 +866,6 @@ function TodaysProtocolColumn({
           + Add to your protocol
         </button>
       </div>
-
-      {protocolTasks.length > 0 ? (
-        <div className="mt-6 border-t border-[#EEF3F7] pt-5">
-          <h3 className={cn(SECTION_HEADING_CLASS, "mb-3")}>From your list</h3>
-          <p className="mb-3 text-[11px] font-normal leading-snug text-[#567C8D]" style={{ fontWeight: 400 }}>
-            Approve active tasks below — they appear here and stay in sync with your list.
-          </p>
-          <ul className="m-0 list-none space-y-0 p-0">
-            {protocolTasks.map((task) => {
-              const lane = priorityToProtocolLane(task.priority);
-              return (
-                <ProtocolRow
-                  key={task.id}
-                  timeLabel={formatProtocolTime(task.deadline)}
-                  title={task.title}
-                  subtitle={task.rawInput.length > 80 ? `${task.rawInput.slice(0, 80)}…` : task.rawInput}
-                  lane={lane}
-                  chipLabel={priorityShortLabel(task.priority)}
-                  rightAction={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => onRemoveFromProtocol(task.id)}
-                      className="h-auto px-2 py-0 text-[10px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D]"
-                      style={{ fontWeight: 400 }}
-                    >
-                      Remove
-                    </Button>
-                  }
-                />
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
     </aside>
   );
 }
@@ -853,6 +891,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [planText, setPlanText] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [feeling, setFeeling] = useState<FeelingOption | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
   const tasks = initialTasks;
 
@@ -946,6 +985,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       } else {
         setPlanError(planRes.error);
       }
+      setInsightsOpen(true);
     });
   }
 
@@ -1053,7 +1093,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               {error}
             </p>
           ) : null}
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="submit"
               disabled={pending || !input.trim()}
@@ -1062,70 +1102,90 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             >
               {pending ? "Adding…" : "Add task"}
             </Button>
-            <button
+            <Button
               type="button"
               disabled={pending || !hasAnyTasks}
               onClick={onWhatNowAndPlan}
-              className="border-0 bg-transparent p-0 text-left text-[13px] font-normal text-[#567C8D] shadow-none hover:underline disabled:cursor-not-allowed disabled:opacity-45 disabled:no-underline"
-              style={{ fontWeight: 400 }}
+              className="h-auto w-auto self-start rounded-[8px] border-0 bg-[#567C8D] text-[14px] font-medium text-white shadow-none hover:bg-[#567C8D]/92 disabled:opacity-45"
+              style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               What should I do now?
-            </button>
+            </Button>
           </div>
         </form>
 
-        {recoError ? (
-          <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
-            {recoError}
-          </p>
-        ) : null}
-        {reco && reco.length > 0 ? (
-          <Card
-            className="rounded-[12px] border-0 bg-[#F5EFEB] shadow-none"
-            aria-live="polite"
-          >
-            <CardContent className="p-4 sm:p-5">
-              <h3 className="font-[family-name:var(--font-cormorant)] text-[20px] font-normal italic text-[#2F4156]">
-                Top picks for right now
-              </h3>
-              <ol
-                className="mt-4 list-decimal space-y-3 pl-5 text-[14px] leading-relaxed text-[#2F4156]"
-                style={{ fontWeight: 400 }}
-              >
-                {reco.map((item, idx) => (
-                  <li key={`${item.title}-${idx}`}>
-                    <span className="font-medium" style={{ fontWeight: 500 }}>
-                      {item.title}
-                    </span>
-                    <span className="text-[#567C8D]"> — {item.reason}</span>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
-        ) : null}
-        {planError ? (
-          <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
-            {planError}
-          </p>
-        ) : null}
-        {planText ? (
-          <Card
-            className="rounded-[12px] border-0 bg-[#ECEEF6] shadow-none"
-            aria-live="polite"
-          >
-            <CardContent className="p-4 sm:p-5">
-              <h3 className="font-[family-name:var(--font-cormorant)] text-[20px] font-normal italic text-[#2F4156]">
-                Today’s plan
-              </h3>
-              <p
-                className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-[#2F4156]"
-                style={{ fontWeight: 400 }}
-              >
-                {planText}
-              </p>
-            </CardContent>
-          </Card>
+        {recoError != null ||
+        planError != null ||
+        (reco != null && reco.length > 0) ||
+        (planText != null && planText.length > 0) ? (
+          <div className="overflow-hidden rounded-[12px] border border-[#EEF3F7] bg-white/90 shadow-none">
+            <button
+              type="button"
+              onClick={() => setInsightsOpen((o) => !o)}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[#F8FAFC]"
+              aria-expanded={insightsOpen}
+            >
+              <span className="text-[12px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
+                {insightsOpen ? "Hide suggestions" : "Show suggestions (top picks & today’s plan)"}
+              </span>
+              {insightsOpen ? (
+                <ChevronUp className="h-4 w-4 shrink-0 text-[#567C8D]" aria-hidden />
+              ) : (
+                <ChevronDown className="h-4 w-4 shrink-0 text-[#567C8D]" aria-hidden />
+              )}
+            </button>
+            {insightsOpen ? (
+              <div className="space-y-4 border-t border-[#EEF3F7] px-3 pb-3 pt-3" aria-live="polite">
+                {recoError ? (
+                  <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                    {recoError}
+                  </p>
+                ) : null}
+                {reco && reco.length > 0 ? (
+                  <Card className="rounded-[10px] border-0 bg-[#F5EFEB] shadow-none">
+                    <CardContent className="p-4 sm:p-5">
+                      <h3 className="font-[family-name:var(--font-cormorant)] text-[18px] font-normal italic text-[#2F4156]">
+                        Top picks for right now
+                      </h3>
+                      <ol
+                        className="mt-3 list-decimal space-y-2 pl-5 text-[13px] leading-relaxed text-[#2F4156]"
+                        style={{ fontWeight: 400 }}
+                      >
+                        {reco.map((item, idx) => (
+                          <li key={`${item.title}-${idx}`}>
+                            <span className="font-medium" style={{ fontWeight: 500 }}>
+                              {item.title}
+                            </span>
+                            <span className="text-[#567C8D]"> — {item.reason}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </CardContent>
+                  </Card>
+                ) : null}
+                {planError ? (
+                  <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                    {planError}
+                  </p>
+                ) : null}
+                {planText ? (
+                  <Card className="rounded-[10px] border-0 bg-[#ECEEF6] shadow-none">
+                    <CardContent className="p-4 sm:p-5">
+                      <h3 className="font-[family-name:var(--font-cormorant)] text-[18px] font-normal italic text-[#2F4156]">
+                        Today’s plan
+                      </h3>
+                      <p
+                        className="mt-3 max-h-[min(40vh,320px)] overflow-y-auto whitespace-pre-line text-[13px] leading-relaxed text-[#2F4156]"
+                        style={{ fontWeight: 400 }}
+                      >
+                        {planText}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
           </section>
 
