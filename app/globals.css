@@ -136,6 +136,19 @@
   --sidebar-accent-foreground: #f8fafc;
   --sidebar-border: #334155;
   --sidebar-ring: #64748b;
+
+  --wellness-bg: #0f172a;
+  --wellness-surface: #1e293b;
+  --wellness-border: #334155;
+  --wellness-text: #e2e8f0;
+  --wellness-text-secondary: #94a3b8;
+  --wellness-text-tertiary: #64748b;
+  --wellness-accent: #94a3b8;
+  --wellness-accent-light: #475569;
+  --wellness-priority-high: #f87171;
+  --wellness-priority-medium: #fbbf24;
+  --wellness-priority-low: #86efac;
+  --wellness-checkbox-checked: #5eead4;
 }
 
 @layer base {

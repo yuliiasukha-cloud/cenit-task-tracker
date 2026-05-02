@@ -1,10 +1,14 @@
 import { TaskBoard, type TaskDTO } from "@/components/TaskBoard";
+import { auth } from "@/auth";
 import { getPrisma } from "@/lib/prisma";
+import { taskScopeWhere } from "@/lib/task-scope";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const session = await auth();
   const rows = await getPrisma().task.findMany({
+    where: taskScopeWhere(session?.user?.id),
     orderBy: [{ deadline: "asc" }, { createdAt: "desc" }],
   });
 

@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
+import { auth } from "@/auth";
 import { getPrisma } from "@/lib/prisma";
+import { taskByIdScopeWhere, taskScopeWhere } from "@/lib/task-scope";
 import { generateDayPlan, parseTaskFromText, recommendTopTasks } from "@/lib/parse-task";
 
 export async function createTaskFromText(rawInput: string) {
@@ -13,6 +15,8 @@ export async function createTaskFromText(rawInput: string) {
   }
 
   try {
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
     const h = await headers();
     const tzFromRequest =
       h.get("x-vercel-ip-timezone") ?? h.get("x-timezone") ?? process.env.TASK_PARSER_TIMEZONE ?? null;
@@ -24,6 +28,7 @@ export async function createTaskFromText(rawInput: string) {
         priority: parsed.priority,
         deadline: parsed.deadline,
         category: parsed.category,
+        userId,
       },
     });
     revalidatePath("/");
@@ -38,27 +43,32 @@ export async function createTaskFromText(rawInput: string) {
 }
 
 export async function setTaskDone(id: string, done: boolean) {
-  await getPrisma().task.update({
-    where: { id },
+  const session = await auth();
+  const r = await getPrisma().task.updateMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
     data: {
       done,
       ...(done ? { protocolApproved: false } : {}),
     },
   });
-  revalidatePath("/");
+  if (r.count) revalidatePath("/");
 }
 
 export async function setProtocolApproved(id: string, protocolApproved: boolean) {
-  await getPrisma().task.update({
-    where: { id },
+  const session = await auth();
+  const r = await getPrisma().task.updateMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
     data: { protocolApproved },
   });
-  revalidatePath("/");
+  if (r.count) revalidatePath("/");
 }
 
 export async function deleteTask(id: string) {
-  await getPrisma().task.delete({ where: { id } });
-  revalidatePath("/");
+  const session = await auth();
+  const r = await getPrisma().task.deleteMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
+  });
+  if (r.count) revalidatePath("/");
 }
 
 export async function updateTaskTitle(id: string, title: string) {
@@ -66,21 +76,23 @@ export async function updateTaskTitle(id: string, title: string) {
   if (!trimmed) {
     return { ok: false as const, error: "Title cannot be empty." };
   }
-  await getPrisma().task.update({
-    where: { id },
+  const session = await auth();
+  const r = await getPrisma().task.updateMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
     data: { title: trimmed.slice(0, 500) },
   });
-  revalidatePath("/");
-  return { ok: true as const };
+  if (r.count) revalidatePath("/");
+  return r.count ? ({ ok: true as const } as const) : ({ ok: false as const, error: "Task not found." } as const);
 }
 
 export async function updateTaskNotes(id: string, notes: string) {
   const trimmed = notes.trim();
-  await getPrisma().task.update({
-    where: { id },
+  const session = await auth();
+  const r = await getPrisma().task.updateMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
     data: { notes: trimmed ? trimmed.slice(0, 8000) : null },
   });
-  revalidatePath("/");
+  if (r.count) revalidatePath("/");
 }
 
 export async function updateTaskMeta(
@@ -103,20 +115,23 @@ export async function updateTaskMeta(
     }
     deadline = d;
   }
-  await getPrisma().task.update({
-    where: { id },
+  const session = await auth();
+  const r = await getPrisma().task.updateMany({
+    where: taskByIdScopeWhere(id, session?.user?.id),
     data: {
       priority: prio,
       category: cat,
       deadline,
     },
   });
-  revalidatePath("/");
-  return { ok: true as const };
+  if (r.count) revalidatePath("/");
+  return r.count ? ({ ok: true as const } as const) : ({ ok: false as const, error: "Task not found." } as const);
 }
 
 export async function getWhatNowRecommendations() {
+  const session = await auth();
   const tasks = await getPrisma().task.findMany({
+    where: taskScopeWhere(session?.user?.id),
     orderBy: [{ deadline: "asc" }, { createdAt: "desc" }],
   });
   try {
@@ -129,8 +144,9 @@ export async function getWhatNowRecommendations() {
 }
 
 export async function getTodayPlan() {
+  const session = await auth();
   const tasks = await getPrisma().task.findMany({
-    where: { done: false },
+    where: { done: false, ...taskScopeWhere(session?.user?.id) },
     orderBy: [{ deadline: "asc" }, { createdAt: "desc" }],
   });
   try {

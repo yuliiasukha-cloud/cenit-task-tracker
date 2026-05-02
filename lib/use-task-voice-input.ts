@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 type RecognitionLike = {
   continuous: boolean;
@@ -27,15 +27,19 @@ function getRecognitionCtor(): (new () => RecognitionLike) | null {
  * Web Speech API → append phrases to the task field. Chrome / Edge / Safari;
  * Firefox usually has no support.
  */
+function speechRecognitionSupported(): boolean {
+  return getRecognitionCtor() !== null;
+}
+
 export function useTaskVoiceInput(onFinalTranscript: (text: string) => void) {
   const [listening, setListening] = useState(false);
-  const [supported, setSupported] = useState(false);
+  const supported = useSyncExternalStore(
+    () => () => {},
+    speechRecognitionSupported,
+    () => false,
+  );
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recRef = useRef<RecognitionLike | null>(null);
-
-  useEffect(() => {
-    setSupported(getRecognitionCtor() !== null);
-  }, []);
 
   const stop = useCallback(() => {
     try {
