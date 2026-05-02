@@ -28,6 +28,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#ffffff",
 };
 
@@ -38,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-[#FFFFFF] pb-[env(safe-area-inset-bottom,0px)] font-[family-name:var(--font-dm-sans)] text-[#2F4156]">
+      <body className="flex min-h-[100dvh] min-h-full flex-col bg-[#FFFFFF] pb-[env(safe-area-inset-bottom,0px)] font-[family-name:var(--font-dm-sans)] text-[#2F4156]">
         <SiteNav />
         <div className="min-h-0 min-w-0 flex-1">{children}</div>
       </body>

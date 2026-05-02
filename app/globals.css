@@ -46,6 +46,10 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display: var(--font-cormorant);
   --font-sans: var(--font-dm-sans);
+
+  /* Large phones (e.g. iPhone 16 Pro Max ~430px) sit below default `sm` (640px).
+     Use `handset:*` for layout that should kick in on modern phones, not only tablets. */
+  --breakpoint-handset: 25rem;
 }
 
 /* Cénit / wellness palette mapped onto shadcn semantic tokens (slate + CSS variables). */
