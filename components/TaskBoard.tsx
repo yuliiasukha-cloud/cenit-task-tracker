@@ -361,6 +361,19 @@ function formatProtocolTime(iso: string | null) {
   }).format(new Date(iso));
 }
 
+/** Parse "HH:MM" / "H:MM" for timeline ordering (minutes from midnight). */
+function protocolTimeToMinutes(time: string): number {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!m) return 24 * 60;
+  const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+  const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+  return h * 60 + min;
+}
+
+function compareProtocolTimeStrings(a: string, b: string): number {
+  return protocolTimeToMinutes(a) - protocolTimeToMinutes(b);
+}
+
 function priorityToProtocolLane(priority: string): ProtocolLane {
   const p = priority.toLowerCase();
   if (p === "low") return "rest";
@@ -612,6 +625,53 @@ function DemoProtocolTimelineBlock({
   );
 }
 
+function FeelingCheckInRow({
+  feeling,
+  onFeelingChange,
+}: {
+  feeling: FeelingOption | null;
+  onFeelingChange: (key: FeelingOption) => void;
+}) {
+  const feelingHint = feeling ? FEELING_OPTIONS.find((f) => f.key === feeling)?.hint : null;
+  return (
+    <div className="bg-transparent">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="text-[11px] font-normal text-[#9BAFC0]" style={{ fontWeight: 400 }}>
+          How are you feeling?
+        </span>
+        <div className="flex items-center gap-0.5">
+          {FEELING_OPTIONS.map(({ key, emoji, label }) => (
+            <button
+              key={key}
+              type="button"
+              title={label}
+              aria-label={label}
+              aria-pressed={feeling === key}
+              onClick={() => onFeelingChange(key)}
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[14px] leading-none transition-opacity",
+                feeling === key
+                  ? "bg-white/50 opacity-100 ring-1 ring-[#E3EBF2]"
+                  : "opacity-45 hover:bg-white/30 hover:opacity-80",
+              )}
+            >
+              <span aria-hidden>{emoji}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {feelingHint ? (
+        <p
+          className="mt-1 line-clamp-1 text-[9px] font-normal leading-tight text-[#9BAFC0]/85"
+          style={{ fontWeight: 400 }}
+        >
+          {feelingHint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function TodaysProtocolColumn({
   protocolTasks,
   onRemoveFromProtocol,
@@ -625,7 +685,6 @@ function TodaysProtocolColumn({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DemoProtocolBlock | null>(null);
   const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
-  const [feeling, setFeeling] = useState<FeelingOption | null>(null);
   const newlyCreatedIdsRef = useRef<Set<string>>(new Set());
 
   const startEdit = useCallback((block: DemoProtocolBlock) => {
@@ -686,50 +745,23 @@ function TodaysProtocolColumn({
     setDraft({ ...next });
   }, []);
 
-  const feelingHint = feeling ? FEELING_OPTIONS.find((f) => f.key === feeling)?.hint : null;
+  const sortedDemoBlocks = useMemo(
+    () =>
+      [...demoBlocks].sort((a, b) => {
+        const d = compareProtocolTimeStrings(a.time, b.time);
+        if (d !== 0) return d;
+        return a.id.localeCompare(b.id);
+      }),
+    [demoBlocks],
+  );
 
   return (
     <aside className="flex min-w-0 flex-[2] basis-0 flex-col lg:sticky lg:top-4 lg:self-start lg:pl-8">
       <p className={COLUMN_EYEBROW_CLASS}>Your protocol</p>
       <h2 className={cn(SECTION_HEADING_CLASS, "mb-4")}>Today&apos;s protocol</h2>
 
-      <div className="mb-5 rounded-lg border border-[#EEF3F7] bg-[#F5EFEB]/50 px-3 py-3 sm:px-4">
-        <p className="text-center text-[12px] font-medium text-[#2F4156] sm:text-left" style={{ fontWeight: 500 }}>
-          How are you feeling today?
-        </p>
-        <div className="mt-2.5 flex flex-wrap justify-center gap-2 sm:justify-start">
-          {FEELING_OPTIONS.map(({ key, emoji, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFeeling(key)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[11px] font-normal transition-colors duration-150",
-                feeling === key
-                  ? "bg-[#567C8D] text-white"
-                  : "bg-white/90 text-[#567C8D] ring-1 ring-[#EEF3F7] hover:bg-white",
-              )}
-              style={{ fontWeight: 400 }}
-            >
-              <span className="mr-1" aria-hidden>
-                {emoji}
-              </span>
-              {label}
-            </button>
-          ))}
-        </div>
-        {feelingHint ? (
-          <p
-            className="mt-2.5 text-center text-[10px] font-normal leading-snug text-[#567C8D] sm:text-left"
-            style={{ fontWeight: 400 }}
-          >
-            {feelingHint}
-          </p>
-        ) : null}
-      </div>
-
       <ul className="m-0 list-none space-y-0 p-0">
-        {demoBlocks.map((block) => (
+        {sortedDemoBlocks.map((block) => (
           <DemoProtocolTimelineBlock
             key={block.id}
             block={block}
@@ -820,7 +852,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [notesDraft, setNotesDraft] = useState("");
   const [planText, setPlanText] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [planLoading, setPlanLoading] = useState(false);
+  const [feeling, setFeeling] = useState<FeelingOption | null>(null);
 
   const tasks = initialTasks;
 
@@ -897,30 +929,24 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     });
   }
 
-  function onWhatNow() {
+  function onWhatNowAndPlan() {
     setReco(null);
     setRecoError(null);
-    startTransition(async () => {
-      const res = await getWhatNowRecommendations();
-      if (res.ok) {
-        setReco(res.items);
-      } else {
-        setRecoError(res.error);
-      }
-    });
-  }
-
-  async function onTodayPlan() {
-    setPlanLoading(true);
     setPlanError(null);
     setPlanText(null);
-    try {
-      const res = await getTodayPlan();
-      if (res.ok) setPlanText(res.text);
-      else setPlanError(res.error);
-    } finally {
-      setPlanLoading(false);
-    }
+    startTransition(async () => {
+      const [recoRes, planRes] = await Promise.all([getWhatNowRecommendations(), getTodayPlan()]);
+      if (recoRes.ok) {
+        setReco(recoRes.items);
+      } else {
+        setRecoError(recoRes.error);
+      }
+      if (planRes.ok) {
+        setPlanText(planRes.text);
+      } else {
+        setPlanError(planRes.error);
+      }
+    });
   }
 
   function beginTitleEdit(task: TaskDTO) {
@@ -1005,10 +1031,11 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       <SectionDivider />
 
       <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-        <div className="flex min-h-0 min-w-0 flex-[3] basis-0 flex-col gap-5 lg:border-r lg:border-[#EEF3F7] lg:pr-8">
-          <section className="py-0">
+        <div className="flex min-h-0 min-w-0 flex-[3] basis-0 flex-col gap-6 lg:border-r lg:border-[#EEF3F7] lg:pr-8">
+          <section className="flex flex-col gap-6 py-0">
+        <FeelingCheckInRow feeling={feeling} onFeelingChange={setFeeling} />
         <p className={COLUMN_EYEBROW_CLASS}>Your tasks</p>
-        <form onSubmit={onAdd} className="flex flex-col gap-3">
+        <form onSubmit={onAdd} className="flex flex-col gap-6">
           <Textarea
             id="task-input"
             name="task"
@@ -1026,46 +1053,35 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               {error}
             </p>
           ) : null}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col items-start gap-2">
             <Button
               type="submit"
               disabled={pending || !input.trim()}
-              className="h-auto w-full rounded-[8px] bg-[#2F4156] px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45"
-              style={{ fontWeight: 500 }}
+              className="h-auto w-auto self-start rounded-[8px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45"
+              style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               {pending ? "Adding…" : "Add task"}
             </Button>
-            <Button
+            <button
               type="button"
-              variant="outline"
               disabled={pending || !hasAnyTasks}
-              onClick={onWhatNow}
-              className="h-auto w-full rounded-[8px] border-[0.5px] border-[#C8D9E6] bg-transparent px-5 py-2.5 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F5EFEB]/60 disabled:opacity-45"
-              style={{ fontWeight: 500 }}
+              onClick={onWhatNowAndPlan}
+              className="border-0 bg-transparent p-0 text-left text-[13px] font-normal text-[#567C8D] shadow-none hover:underline disabled:cursor-not-allowed disabled:opacity-45 disabled:no-underline"
+              style={{ fontWeight: 400 }}
             >
               What should I do now?
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={planLoading || activeCount === 0}
-              onClick={onTodayPlan}
-              className="h-auto w-full rounded-[8px] border-[0.5px] border-[#C8D9E6] bg-transparent px-5 py-2.5 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F5EFEB]/60 disabled:opacity-45"
-              style={{ fontWeight: 500 }}
-            >
-              {planLoading ? "Planning…" : "Today’s plan (AI)"}
-            </Button>
+            </button>
           </div>
         </form>
 
         {recoError ? (
-          <p className="mt-4 text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+          <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
             {recoError}
           </p>
         ) : null}
         {reco && reco.length > 0 ? (
           <Card
-            className="mt-4 rounded-[12px] border-0 bg-[#F5EFEB] shadow-none"
+            className="rounded-[12px] border-0 bg-[#F5EFEB] shadow-none"
             aria-live="polite"
           >
             <CardContent className="p-4 sm:p-5">
@@ -1089,13 +1105,13 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
           </Card>
         ) : null}
         {planError ? (
-          <p className="mt-4 text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+          <p className="text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
             {planError}
           </p>
         ) : null}
         {planText ? (
           <Card
-            className="mt-4 rounded-[12px] border-0 bg-[#ECEEF6] shadow-none"
+            className="rounded-[12px] border-0 bg-[#ECEEF6] shadow-none"
             aria-live="polite"
           >
             <CardContent className="p-4 sm:p-5">
@@ -1113,67 +1129,65 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
         ) : null}
           </section>
 
-          <section className="flex min-h-0 flex-1 flex-col gap-3 py-0">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["all", "All"],
-                ["active", "Active"],
-                ["done", "Done"],
-              ] as const
-            ).map(([key, label]) => (
-              <Button
-                key={key}
-                type="button"
-                variant={filter === key ? "default" : "secondary"}
-                onClick={() => setFilter(key)}
-                className={cn(
-                  "h-auto rounded-full px-4 py-2 text-[12px] uppercase tracking-[1px] shadow-none",
-                  filter === key
-                    ? "bg-[#2F4156] text-white hover:bg-[#2F4156] hover:text-white"
-                    : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]/90 hover:text-[#567C8D]",
-                )}
-                style={{ fontWeight: 500 }}
-              >
-                {label}
-              </Button>
-            ))}
+          <section className="flex min-h-0 flex-1 flex-col gap-6 py-0">
+        {hasAnyTasks ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["all", "All"],
+                  ["active", "Active"],
+                  ["done", "Done"],
+                ] as const
+              ).map(([key, label]) => (
+                <Button
+                  key={key}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setFilter(key)}
+                  className={cn(
+                    "h-auto rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.6px] shadow-none hover:bg-transparent",
+                    filter === key
+                      ? "bg-[#F5EFEB] font-medium text-[#2F4156] hover:bg-[#F5EFEB] hover:text-[#2F4156]"
+                      : "font-normal text-[#9BAFC0] hover:text-[#567C8D]",
+                  )}
+                  style={{ fontWeight: filter === key ? 500 : 400 }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[10px] font-normal uppercase tracking-[0.8px] text-[#9BAFC0]" style={{ fontWeight: 400 }}>
+                Sort
+              </span>
+              {(
+                [
+                  ["deadline", "Deadline"],
+                  ["priority", "Priority"],
+                  ["created", "Newest"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSortBy(key)}
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-normal transition-colors",
+                    sortBy === key
+                      ? "font-medium text-[#2F4156]"
+                      : "text-[#9BAFC0] hover:text-[#567C8D]",
+                  )}
+                  style={{ fontWeight: sortBy === key ? 500 : 400 }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="text-[10px] font-medium uppercase tracking-[1.5px] text-[#9BAFC0]"
-              style={{ fontWeight: 500 }}
-            >
-              Sort
-            </span>
-            {(
-              [
-                ["deadline", "Deadline"],
-                ["priority", "Priority"],
-                ["created", "Newest"],
-              ] as const
-            ).map(([key, label]) => (
-              <Button
-                key={key}
-                type="button"
-                variant={sortBy === key ? "default" : "secondary"}
-                onClick={() => setSortBy(key)}
-                className={cn(
-                  "h-auto rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.5px] shadow-none",
-                  sortBy === key
-                    ? "bg-[#567C8D] text-white hover:bg-[#567C8D] hover:text-white"
-                    : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]/90 hover:text-[#567C8D]",
-                )}
-                style={{ fontWeight: 500 }}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
+        ) : null}
 
-        <div className="mt-4 min-h-0 flex-1 lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto lg:pr-1">
+        <div className="min-h-0 flex-1 lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto lg:pr-1">
           {!hasAnyTasks ? (
             <Card className="rounded-[12px] border-[#EEF3F7] bg-[#F5EFEB]/40 shadow-none">
               <CardContent className="px-6 py-12 text-center sm:px-8">
