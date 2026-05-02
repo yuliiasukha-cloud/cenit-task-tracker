@@ -1,0 +1,12 @@
+---
+description: Official Cénit logo asset and usage for the task-tracker app
+alwaysApply: true
+---
+
+# Cénit brand — logo
+
+- The **only** approved site/product logo is the raster lockup at **`public/cenit-logo.png`**: four-point star, mountain line art, **CÉNIT** wordmark (1024×682 source).
+- Use it via **Next.js `Image`** (or `<img src="/cenit-logo.png">`) for header, marketing pages, and any branded surface. **Do not** substitute the old SVG mark or ad‑hoc text lockups for primary branding.
+- **`SiteNav`** is the canonical header implementation: compact bar (`py-1` / `sm:py-1.5`), left-aligned logo (`object-left`), responsive height from **`h-[3.675rem]`** (≈30% smaller than the prior oversized lockup) up to **`lg:h-[4.25rem]`**, link to `/`.
+
+When updating the logo file, replace **`public/cenit-logo.png`** in place and keep the same path so imports stay stable.

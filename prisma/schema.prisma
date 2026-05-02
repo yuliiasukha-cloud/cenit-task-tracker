@@ -1,0 +1,21 @@
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Task {
+  id                String    @id @default(cuid())
+  rawInput          String
+  title             String
+  priority          String // high / medium / low
+  deadline          DateTime?
+  done              Boolean   @default(false)
+  protocolApproved  Boolean   @default(false) // show on Today’s protocol
+  createdAt         DateTime  @default(now())
+}
