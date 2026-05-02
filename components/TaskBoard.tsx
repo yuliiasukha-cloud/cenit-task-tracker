@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ChevronUp,
   ClipboardList,
+  Mic,
   PartyPopper,
   Sparkles,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useTaskVoiceInput } from "@/lib/use-task-voice-input";
 import { cn } from "@/lib/utils";
 
 export type TaskDTO = {
@@ -987,6 +989,22 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const detailsPrioritySelectRef = useRef<HTMLSelectElement>(null);
   const detailsCategorySelectRef = useRef<HTMLSelectElement>(null);
 
+  const appendVoiceTranscript = useCallback((text: string) => {
+    if (!text) return;
+    setInput((prev) => {
+      const p = prev.trimEnd();
+      return p ? `${p} ${text}` : text;
+    });
+  }, []);
+
+  const {
+    listening: voiceListening,
+    supported: voiceSupported,
+    voiceError,
+    toggle: toggleVoiceInput,
+    clearVoiceError,
+  } = useTaskVoiceInput(appendVoiceTranscript);
+
   const tasks = initialTasks;
 
   const weekDays = useMemo(() => weekDaysMondayFirst(selectedDay), [selectedDay]);
@@ -1307,18 +1325,57 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
         <FeelingCheckInRow feeling={feeling} onFeelingChange={setFeeling} />
         <p className={COLUMN_EYEBROW_CLASS}>Your tasks</p>
         <form onSubmit={onAdd} className="flex flex-col gap-6">
-          <Textarea
-            id="task-input"
-            name="task"
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="What do you need to do today? Write it like you'd tell a friend..."
-            aria-label="New task"
-            className="min-h-[72px] resize-y rounded-[12px] border-[#EEF3F7] bg-white px-4 py-3 text-[16px] font-normal leading-relaxed text-[#2F4156] shadow-none placeholder:text-[#9BAFC0] placeholder:opacity-90 focus-visible:border-[#C8D9E6] focus-visible:ring-1 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-0 disabled:opacity-60 min-[640px]:text-[15px]"
-            style={{ fontWeight: 400 }}
-            disabled={pending}
-          />
+          <div className="relative">
+            <Textarea
+              id="task-input"
+              name="task"
+              rows={2}
+              value={input}
+              onChange={(e) => {
+                clearVoiceError();
+                setInput(e.target.value);
+              }}
+              placeholder="What do you need to do today? Write it like you'd tell a friend..."
+              aria-label="New task"
+              className="min-h-[72px] resize-y rounded-[12px] border-[#EEF3F7] bg-white py-3 pl-4 pr-14 text-[16px] font-normal leading-relaxed text-[#2F4156] shadow-none placeholder:text-[#9BAFC0] placeholder:opacity-90 focus-visible:border-[#C8D9E6] focus-visible:ring-1 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-0 disabled:opacity-60 min-[640px]:text-[15px]"
+              style={{ fontWeight: 400 }}
+              disabled={pending}
+            />
+            <button
+              type="button"
+              onClick={() => toggleVoiceInput()}
+              disabled={pending || !voiceSupported}
+              aria-pressed={voiceListening}
+              aria-label={voiceListening ? "Stop voice input" : "Start voice input"}
+              title={
+                !voiceSupported
+                  ? "Voice input is not supported in this browser"
+                  : voiceListening
+                    ? "Stop dictating"
+                    : "Dictate with your voice (tap again when finished)"
+              }
+              className={cn(
+                "absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border transition",
+                !voiceSupported
+                  ? "cursor-not-allowed border-[#EEF3F7] bg-[#FAFAFA] text-[#C8D9E6]"
+                  : voiceListening
+                    ? "border-[#E24B4A]/40 bg-[#FAECE7] text-[#E24B4A] shadow-sm"
+                    : "border-[#EEF3F7] bg-white text-[#567C8D] hover:border-[#C8D9E6] hover:bg-[#F8FAFC] hover:text-[#2F4156]",
+              )}
+            >
+              <Mic className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+          {voiceListening ? (
+            <p className="text-[12px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
+              Listening… speak your task, then tap the mic again to stop.
+            </p>
+          ) : null}
+          {voiceError ? (
+            <p className="text-[13px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
+              {voiceError}
+            </p>
+          ) : null}
           {error ? (
             <p className="text-[13px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
               {error}
