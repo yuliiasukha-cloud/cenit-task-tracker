@@ -1093,24 +1093,20 @@ export function TaskBoard({
     return tasks;
   }, [tasks, filter]);
 
-  const visibleForSelectedDay = useMemo(
-    () => visible.filter((t) => taskOnCalendarDay(t, selectedDay)),
-    [visible, selectedDay],
-  );
-
+  /** Full task list for the current filter — week strip does not hide tasks here. */
   const sortedVisible = useMemo(() => {
-    const list = [...visibleForSelectedDay];
+    const list = [...visible];
     if (sortBy === "deadline") list.sort(compareDeadlineThenCreated);
     else if (sortBy === "priority") list.sort(comparePriorityThenDeadline);
     else list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
-  }, [visibleForSelectedDay, sortBy]);
+  }, [visible, sortBy]);
 
   const activeCount = tasks.filter((t) => !t.done).length;
   const hasAnyTasks = tasks.length > 0;
   /** Every task in the app is done — full “all done” moment. */
   const allTasksComplete = hasAnyTasks && activeCount === 0;
-  /** Everything in the current list (this day + filter) is done, but work may exist on other days. */
+  /** Everything in the current filtered list is done (other filters may still have items). */
   const allVisibleTasksComplete =
     sortedVisible.length > 0 && sortedVisible.every((t) => t.done);
 
@@ -1722,9 +1718,9 @@ export function TaskBoard({
                 Nothing in this view
               </p>
               <p className="mx-auto mt-3 max-w-md text-[13px] leading-relaxed text-[#9BAFC0]" style={{ fontWeight: 400 }}>
-                {visible.length === 0
-                  ? "Try another filter, or switch back to All."
-                  : `No tasks for ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })} — pick another day above, or change a deadline.`}
+                {tasks.length === 0
+                  ? "Add a task above to get started."
+                  : "Nothing matches this filter — switch to All, or try Active or Done."}
               </p>
             </div>
           ) : (
