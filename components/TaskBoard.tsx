@@ -1037,6 +1037,11 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
   const activeCount = tasks.filter((t) => !t.done).length;
   const hasAnyTasks = tasks.length > 0;
+  /** Every task in the app is done — full “all done” moment. */
+  const allTasksComplete = hasAnyTasks && activeCount === 0;
+  /** Everything in the current list (this day + filter) is done, but work may exist on other days. */
+  const allVisibleTasksComplete =
+    sortedVisible.length > 0 && sortedVisible.every((t) => t.done);
 
   const protocolTasksAll = useMemo(
     () =>
@@ -1206,7 +1211,8 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     });
   }
 
-  const showAllDoneCelebration = hasAnyTasks && activeCount === 0 && filter !== "done";
+  const showAllDoneCelebration =
+    filter !== "done" && (allTasksComplete || allVisibleTasksComplete);
 
   function focusNewTaskInput() {
     const el = document.getElementById("task-input");
