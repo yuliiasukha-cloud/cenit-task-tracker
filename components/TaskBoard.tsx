@@ -50,11 +50,11 @@ export type TaskDTO = {
 
 /** Cormorant bold italic — Today’s protocol, From your list. */
 const SECTION_HEADING_CLASS =
-  "font-[family-name:var(--font-cormorant)] text-[1.35rem] font-bold italic leading-tight text-[#2F4156] handset:text-[1.5rem]";
+  "font-[family-name:var(--font-cormorant)] text-[1.35rem] font-bold italic leading-tight text-[#2F4156] md:text-[1.5rem]";
 
 /** DM Sans column eyebrow — YOUR TASKS / YOUR PROTOCOL. */
 const COLUMN_EYEBROW_CLASS =
-  "mb-2 font-[family-name:var(--font-dm-sans)] text-[9px] font-normal uppercase tracking-[3px] text-[#9BAFC0]";
+  "mb-2 font-[family-name:var(--font-dm-sans)] text-[14px] font-normal uppercase tracking-[3px] text-[#9BAFC0] md:text-[9px]";
 
 /** Meaning-based lanes for Today’s protocol (glow = beauty/morning, body = health, etc.). */
 type ProtocolLane = "glow" | "body" | "work" | "nourish" | "rest";
@@ -408,7 +408,7 @@ function datetimeLocalValueToIso(value: string): string | null {
 }
 
 const DETAILS_SELECT_CLASS =
-  "mt-0.5 w-full max-w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2.5 text-[16px] text-[#2F4156] handset:max-w-[260px] handset:px-2 handset:py-1.5 min-[640px]:text-[13px]";
+  "mt-0.5 w-full max-w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2.5 text-[16px] text-[#2F4156] md:max-w-[260px] md:px-2 md:py-1.5 min-[640px]:text-[13px]";
 
 /** 24h HH:MM for protocol calendar column (matches demo block times). */
 function formatProtocolTime24(iso: string | null) {
@@ -500,14 +500,14 @@ function ProtocolRow({
   const chip = chipLabel ?? laneStyle.label;
   return (
     <li className="pb-3 last:pb-0">
-      <div className="flex gap-3 rounded-lg border border-[#EEF3F7] bg-transparent py-2 pl-2 pr-2">
+      <div className="flex gap-2 rounded-lg border border-[#EEF3F7] bg-transparent py-1.5 pl-1.5 pr-1.5 md:gap-3 md:py-2 md:pl-2 md:pr-2">
         <div
-          className="w-[2.75rem] shrink-0 pt-0.5 text-right text-[11px] font-medium leading-none"
+          className="w-10 shrink-0 pt-0.5 text-right text-[14px] font-medium leading-none md:w-[2.75rem] md:text-[11px]"
           style={{ color: laneStyle.accent }}
         >
           {timeLabel}
         </div>
-        <div className="flex w-4 shrink-0 justify-center pt-1">
+        <div className="flex w-3 shrink-0 justify-center pt-1 md:w-4">
           <span
             className="h-2 w-2 shrink-0 rounded-full opacity-90"
             style={{ backgroundColor: laneStyle.dot }}
@@ -515,11 +515,11 @@ function ProtocolRow({
         </div>
         <div className="min-w-0 flex-1 pt-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-[13px] font-medium leading-snug text-[#2F4156]" style={{ fontWeight: 500 }}>
+            <p className="text-[14px] font-medium leading-snug text-[#2F4156] md:text-[13px]" style={{ fontWeight: 500 }}>
               {title}
             </p>
             <span
-              className="rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide"
+              className="rounded-full px-2 py-0.5 text-[12px] font-medium uppercase tracking-wide md:text-[9px]"
               style={{
                 backgroundColor: laneStyle.chipBg,
                 color: laneStyle.chipText,
@@ -528,11 +528,11 @@ function ProtocolRow({
               {chip}
             </span>
           </div>
-          <div className="mt-1 flex flex-col gap-2 handset:flex-row handset:items-start handset:justify-between">
-            <p className="min-w-0 flex-1 text-[10px] font-normal leading-snug text-[#567C8D]" style={{ fontWeight: 400 }}>
+          <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <p className="min-w-0 flex-1 text-[14px] font-normal leading-snug text-[#567C8D] md:text-[10px]" style={{ fontWeight: 400 }}>
               {subtitle}
             </p>
-            {rightAction ? <div className="shrink-0 self-start handset:self-auto">{rightAction}</div> : null}
+            {rightAction ? <div className="shrink-0 self-start md:self-auto">{rightAction}</div> : null}
           </div>
         </div>
       </div>
@@ -582,12 +582,12 @@ function DemoProtocolTimelineBlock({
               onRequestEdit();
             }
           }}
-          className="group relative flex cursor-pointer gap-3 rounded-lg border border-[#EEF3F7] bg-transparent py-2 pl-2 pr-2 transition-colors duration-150 hover:bg-[#FAFAFA]/80"
+          className="group relative flex cursor-pointer gap-2 rounded-lg border border-[#EEF3F7] bg-transparent py-1.5 pl-1.5 pr-1.5 transition-colors duration-150 hover:bg-[#FAFAFA]/80 md:gap-3 md:py-2 md:pl-2 md:pr-2"
         >
           <button
             type="button"
             aria-label="Remove block"
-            className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full text-[15px] leading-none text-[#9BAFC0] opacity-100 transition-opacity duration-150 hover:bg-[#F5EFEB] hover:text-[#567C8D] handset:h-6 handset:w-6 handset:text-[14px] handset:opacity-0 handset:group-hover:opacity-100"
+            className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full text-[15px] leading-none text-[#9BAFC0] opacity-100 transition-opacity duration-150 hover:bg-[#F5EFEB] hover:text-[#567C8D] md:h-6 md:w-6 md:text-[14px] md:opacity-0 md:group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
@@ -596,12 +596,12 @@ function DemoProtocolTimelineBlock({
             ×
           </button>
           <div
-            className="w-[2.75rem] shrink-0 pt-0.5 text-right text-[11px] font-medium leading-none"
+            className="w-10 shrink-0 pt-0.5 text-right text-[14px] font-medium leading-none md:w-[2.75rem] md:text-[11px]"
             style={{ color: style.accent }}
           >
             {block.time}
           </div>
-          <div className="flex w-4 shrink-0 justify-center pt-1">
+          <div className="flex w-3 shrink-0 justify-center pt-1 md:w-4">
             <span
               className="h-2 w-2 shrink-0 rounded-full opacity-90 transition-colors duration-150"
               style={{ backgroundColor: style.dot }}
@@ -609,11 +609,11 @@ function DemoProtocolTimelineBlock({
           </div>
           <div className="min-w-0 flex-1 pr-6 pt-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <p className="text-[13px] font-medium leading-snug text-[#2F4156]" style={{ fontWeight: 500 }}>
+              <p className="text-[14px] font-medium leading-snug text-[#2F4156] md:text-[13px]" style={{ fontWeight: 500 }}>
                 {block.activity}
               </p>
               <span
-                className="rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide transition-colors duration-150"
+                className="rounded-full px-2 py-0.5 text-[12px] font-medium uppercase tracking-wide transition-colors duration-150 md:text-[9px]"
                 style={{
                   backgroundColor: style.chipBg,
                   color: style.chipText,
@@ -623,7 +623,7 @@ function DemoProtocolTimelineBlock({
               </span>
             </div>
             {block.note ? (
-              <p className="mt-1 text-[10px] font-normal leading-snug text-[#567C8D]" style={{ fontWeight: 400 }}>
+              <p className="mt-1 text-[14px] font-normal leading-snug text-[#567C8D] md:text-[10px]" style={{ fontWeight: 400 }}>
                 {block.note}
               </p>
             ) : null}
@@ -632,14 +632,14 @@ function DemoProtocolTimelineBlock({
       ) : (
         draft && (
           <div className="flex flex-col gap-3 rounded-lg border border-[#567C8D] bg-white/60 py-3 pl-2 pr-3 ring-1 ring-[#567C8D]/90 transition-[border-color,box-shadow] duration-150">
-            <div className="flex flex-wrap gap-3 handset:flex-nowrap">
+            <div className="flex flex-wrap gap-3 md:flex-nowrap">
               <label className="flex min-w-[6.5rem] flex-col gap-0.5">
                 <span className="text-[9px] font-normal uppercase tracking-wide text-[#9BAFC0]">Time</span>
                 <input
                   type="time"
                   value={draft.time.length >= 5 ? draft.time.slice(0, 5) : draft.time}
                   onChange={(e) => setDraft((d) => (d ? { ...d, time: e.target.value } : d))}
-                  className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] handset:py-1.5 min-[640px]:text-[12px]"
+                  className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] md:py-1.5 min-[640px]:text-[12px]"
                   style={{ fontWeight: 400 }}
                 />
               </label>
@@ -649,7 +649,7 @@ function DemoProtocolTimelineBlock({
                   type="text"
                   value={draft.activity}
                   onChange={(e) => setDraft((d) => (d ? { ...d, activity: e.target.value } : d))}
-                  className="w-full rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] handset:py-1.5 min-[640px]:text-[13px]"
+                  className="w-full rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] md:py-1.5 min-[640px]:text-[13px]"
                   style={{ fontWeight: 400 }}
                   placeholder="Activity name"
                 />
@@ -664,7 +664,7 @@ function DemoProtocolTimelineBlock({
                     d ? { ...d, protocolCategory: e.target.value as ProtocolCategoryKey } : d,
                   )
                 }
-                className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2.5 text-[16px] text-[#2F4156] handset:py-1.5 min-[640px]:text-[13px]"
+                className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2.5 text-[16px] text-[#2F4156] md:py-1.5 min-[640px]:text-[13px]"
                 style={{ fontWeight: 400 }}
               >
                 {PROTOCOL_CATEGORY_OPTIONS.map((opt) => (
@@ -680,7 +680,7 @@ function DemoProtocolTimelineBlock({
                 value={draft.note}
                 onChange={(e) => setDraft((d) => (d ? { ...d, note: e.target.value } : d))}
                 rows={2}
-                className="resize-y rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] leading-relaxed text-[#2F4156] handset:py-1.5 min-[640px]:text-[12px]"
+                className="resize-y rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] leading-relaxed text-[#2F4156] md:py-1.5 min-[640px]:text-[12px]"
                 style={{ fontWeight: 400 }}
                 placeholder="Optional note"
               />
@@ -722,7 +722,7 @@ function FeelingCheckInRow({
   return (
     <div className="bg-transparent">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <span className="text-[11px] font-normal text-[#9BAFC0]" style={{ fontWeight: 400 }}>
+        <span className="text-[14px] font-normal text-[#9BAFC0] md:text-[11px]" style={{ fontWeight: 400 }}>
           How are you feeling?
         </span>
         <div className="flex items-center gap-0.5">
@@ -735,7 +735,7 @@ function FeelingCheckInRow({
               aria-pressed={feeling === key}
               onClick={() => onFeelingChange(key)}
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px] leading-none transition-opacity handset:h-6 handset:w-6 handset:text-[14px]",
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px] leading-none transition-opacity md:h-6 md:w-6 md:text-[14px]",
                 feeling === key
                   ? "bg-white/50 opacity-100 ring-1 ring-[#E3EBF2]"
                   : "opacity-45 hover:bg-white/30 hover:opacity-80",
@@ -748,7 +748,7 @@ function FeelingCheckInRow({
       </div>
       {feelingHint ? (
         <p
-          className="mt-1 line-clamp-1 text-[9px] font-normal leading-tight text-[#9BAFC0]/85"
+          className="mt-1 line-clamp-2 text-[14px] font-normal leading-tight text-[#9BAFC0]/85 md:line-clamp-1 md:text-[9px]"
           style={{ fontWeight: 400 }}
         >
           {feelingHint}
@@ -883,7 +883,7 @@ function TodaysProtocolColumn({
     : `Protocol — ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`;
 
   return (
-    <aside className="flex min-w-0 flex-[2] basis-0 flex-col border-t border-[#EEF3F7] pt-6 mt-6 lg:mt-0 lg:border-t-0 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:pl-8">
+    <aside className="flex w-full min-w-0 flex-col border-t border-[#EEF3F7] pt-6 mt-6 md:mt-0 md:flex-[2] md:basis-0 md:border-t-0 md:pt-0 md:pl-8 md:sticky md:top-4 md:self-start">
       <p className={COLUMN_EYEBROW_CLASS}>Your protocol</p>
       <div className="mb-4 flex items-center gap-2.5">
         <ProtocolPaneIcon />
@@ -930,7 +930,7 @@ function TodaysProtocolColumn({
                   variant="ghost"
                   disabled={pending}
                   onClick={() => onRemoveFromProtocol(task.id)}
-                  className="h-auto min-h-[44px] px-3 py-2 text-[11px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] handset:min-h-0 handset:px-2 handset:py-0 handset:text-[10px]"
+                  className="h-auto min-h-[44px] px-3 py-2 text-[11px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] md:min-h-0 md:px-2 md:py-0 md:text-[10px]"
                   style={{ fontWeight: 400 }}
                 >
                   Remove
@@ -1239,21 +1239,21 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] overflow-x-clip px-3 pb-24 pt-2 handset:px-6 handset:pb-10 handset:pt-3">
-      <section className="py-0.5 -mx-1 px-1 handset:mx-0 handset:px-0" aria-label="Week calendar">
-        <div className="flex flex-col gap-2 handset:flex-row handset:items-stretch handset:gap-2">
-          <div className="flex min-w-0 flex-1 items-stretch gap-1 handset:gap-2">
+    <div className="mx-auto w-full max-w-[1200px] overflow-x-clip px-3 pb-24 pt-2 md:px-6 md:pb-10 md:pt-3">
+      <section className="py-0.5 -mx-1 px-1 md:mx-0 md:px-0" aria-label="Week calendar">
+        <div className="flex flex-col gap-2 md:flex-row md:items-stretch md:gap-2">
+          <div className="flex min-w-0 flex-1 items-stretch gap-1 md:gap-2">
             <button
               type="button"
               aria-label="Previous week"
               onClick={() => setSelectedDay(startOfDay(addDays(selectedDay, -7)))}
-              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] handset:min-h-0 handset:w-8"
+              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] md:min-h-0 md:w-8"
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={2} aria-hidden />
             </button>
             <div
               ref={weekStripRef}
-              className="flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] handset:justify-between handset:overflow-x-visible handset:pb-0.5 handset:pt-0"
+              className="flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] md:justify-between md:overflow-x-visible md:pb-0.5 md:pt-0"
             >
               {weekDays.map((d, i) => {
                 const isToday = isSameDay(d, new Date());
@@ -1266,7 +1266,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                     onClick={() => setSelectedDay(startOfDay(d))}
                     aria-pressed={isSelected}
                     aria-label={`View tasks for ${label}`}
-                    className="flex min-h-[52px] min-w-[3rem] shrink-0 snap-center flex-col items-center justify-center gap-1 text-center handset:snap-none handset:min-h-0 handset:min-w-0 handset:flex-1"
+                    className="flex min-h-[44px] min-w-[2.75rem] shrink-0 snap-center flex-col items-center justify-center gap-0.5 text-center md:min-h-0 md:min-w-0 md:flex-1 md:snap-none md:gap-1"
                   >
                     <span
                       className="text-[9px] font-normal uppercase tracking-wide text-[#A9B8C9]"
@@ -1276,7 +1276,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                     </span>
                     <span
                       className={cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center text-[14px] font-medium leading-none transition-colors handset:h-7 handset:w-7 handset:text-[13px]",
+                        "flex h-7 w-7 shrink-0 items-center justify-center text-[14px] font-medium leading-none transition-colors md:h-7 md:w-7 md:text-[13px]",
                         isSelected
                           ? "rounded-full bg-[#2F4156] text-white"
                           : isToday
@@ -1295,7 +1295,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               type="button"
               aria-label="Next week"
               onClick={() => setSelectedDay(startOfDay(addDays(selectedDay, 7)))}
-              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] handset:min-h-0 handset:w-8"
+              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] md:min-h-0 md:w-8"
             >
               <ChevronRight className="h-5 w-5" strokeWidth={2} aria-hidden />
             </button>
@@ -1305,7 +1305,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             variant={isSameDay(selectedDay, new Date()) ? "secondary" : "default"}
             onClick={() => setSelectedDay(startOfDay(new Date()))}
             className={cn(
-              "h-auto min-h-[48px] w-full shrink-0 rounded-full px-4 py-2.5 text-[14px] font-semibold shadow-none handset:min-h-0 handset:w-auto handset:self-center handset:px-4 handset:py-1.5 handset:text-[13px]",
+              "h-auto min-h-[44px] w-full shrink-0 rounded-full px-4 py-2.5 text-[14px] font-semibold shadow-none md:min-h-0 md:w-auto md:self-center md:px-4 md:py-1.5 md:text-[13px]",
               isSameDay(selectedDay, new Date())
                 ? "border border-[#EEF3F7] bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]"
                 : "border-0 bg-[#2F4156] text-white hover:bg-[#2F4156]/95",
@@ -1319,8 +1319,8 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
       <SectionDivider />
 
-      <div className="mt-6 flex flex-col gap-6 handset:mt-8 handset:gap-8 lg:flex-row lg:items-start lg:gap-10">
-        <div className="flex min-h-0 min-w-0 flex-[3] basis-0 flex-col gap-6 lg:border-r lg:border-[#EEF3F7] lg:pr-8">
+      <div className="mt-6 flex min-w-0 flex-col gap-6 md:mt-8 md:flex-row md:items-start md:gap-8 lg:gap-10">
+        <div className="flex min-h-0 w-full min-w-0 flex-col gap-6 md:flex-[3] md:basis-0 md:border-r md:border-[#EEF3F7] md:pr-6 lg:pr-8">
           <section className="flex flex-col gap-6 py-0">
         <FeelingCheckInRow feeling={feeling} onFeelingChange={setFeeling} />
         <p className={COLUMN_EYEBROW_CLASS}>Your tasks</p>
@@ -1367,25 +1367,25 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             </button>
           </div>
           {voiceListening ? (
-            <p className="text-[12px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
+            <p className="text-[14px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
               Listening… speak your task, then tap the mic again to stop.
             </p>
           ) : null}
           {voiceError ? (
-            <p className="text-[13px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
+            <p className="text-[14px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
               {voiceError}
             </p>
           ) : null}
           {error ? (
-            <p className="text-[13px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
+            <p className="text-[14px] font-normal text-[#E24B4A]" style={{ fontWeight: 400 }}>
               {error}
             </p>
           ) : null}
-          <div className="flex w-full flex-col items-stretch gap-2 handset:w-auto handset:flex-row handset:flex-wrap handset:items-center">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 md:w-auto md:flex-row md:flex-wrap md:items-center">
             <Button
               type="submit"
               disabled={pending || !input.trim()}
-              className="h-auto min-h-[48px] w-full rounded-[8px] border-0 bg-[#2F4156] text-[15px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45 handset:w-auto handset:min-h-0 handset:self-start handset:text-[14px]"
+              className="h-auto min-h-[44px] w-full rounded-[8px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45 md:w-auto md:min-h-0 md:self-start md:text-[14px]"
               style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               {pending ? "Adding…" : "Add task"}
@@ -1394,7 +1394,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               type="button"
               disabled={pending || !hasAnyTasks}
               onClick={onWhatNowAndPlan}
-              className="h-auto min-h-[48px] w-full rounded-[8px] border-0 bg-[#567C8D] text-[15px] font-medium text-white shadow-none hover:bg-[#567C8D]/92 disabled:opacity-45 handset:w-auto handset:min-h-0 handset:self-start handset:text-[14px]"
+              className="h-auto min-h-[44px] w-full rounded-[8px] border-0 bg-[#567C8D] text-[14px] font-medium text-white shadow-none hover:bg-[#567C8D]/92 disabled:opacity-45 md:w-auto md:min-h-0 md:self-start md:text-[14px]"
               style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               What should I do now?
@@ -1410,16 +1410,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             <button
               type="button"
               onClick={() => setInsightsOpen((o) => !o)}
-              className="flex w-full min-h-[48px] items-center justify-between gap-2 px-3 py-3 text-left transition-colors hover:bg-[#F8FAFC] handset:min-h-0 handset:py-2.5"
+              className="flex w-full min-h-[44px] items-center justify-between gap-2 px-3 py-3 text-left text-[14px] transition-colors hover:bg-[#F8FAFC] md:min-h-0 md:py-2.5 md:text-[12px]"
               aria-expanded={insightsOpen}
             >
-              <span className="text-[12px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
+              <span className="text-[14px] font-medium text-[#567C8D] md:text-[12px]" style={{ fontWeight: 500 }}>
                 {insightsOpen ? (
                   "Hide suggestions"
                 ) : (
                   <>
-                    <span className="handset:hidden">Show suggestions</span>
-                    <span className="hidden handset:inline">Show suggestions (top picks & today’s plan)</span>
+                    <span className="md:hidden">Show suggestions</span>
+                    <span className="hidden md:inline">Show suggestions (top picks & today’s plan)</span>
                   </>
                 )}
               </span>
@@ -1438,7 +1438,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 ) : null}
                 {reco && reco.length > 0 ? (
                   <Card className="rounded-[10px] border-0 bg-[#F5EFEB] shadow-none">
-                    <CardContent className="p-4 handset:p-5">
+                    <CardContent className="p-4 md:p-5">
                       <h3 className="font-[family-name:var(--font-cormorant)] text-[18px] font-normal italic text-[#2F4156]">
                         Top picks for right now
                       </h3>
@@ -1465,7 +1465,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 ) : null}
                 {planText ? (
                   <Card className="rounded-[10px] border-0 bg-[#ECEEF6] shadow-none">
-                    <CardContent className="p-4 handset:p-5">
+                    <CardContent className="p-4 md:p-5">
                       <h3 className="font-[family-name:var(--font-cormorant)] text-[18px] font-normal italic text-[#2F4156]">
                         Today’s plan
                       </h3>
@@ -1501,7 +1501,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                   variant="ghost"
                   onClick={() => setFilter(key)}
                   className={cn(
-                    "h-auto rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.6px] shadow-none hover:bg-transparent",
+                    "h-auto min-h-[44px] rounded-full px-3 py-2 text-[14px] uppercase tracking-[0.6px] shadow-none hover:bg-transparent md:min-h-0 md:px-2.5 md:py-1 md:text-[11px]",
                     filter === key
                       ? "bg-[#F5EFEB] font-medium text-[#2F4156] hover:bg-[#F5EFEB] hover:text-[#2F4156]"
                       : "font-normal text-[#9BAFC0] hover:text-[#567C8D]",
@@ -1513,7 +1513,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-[10px] font-normal uppercase tracking-[0.8px] text-[#9BAFC0]" style={{ fontWeight: 400 }}>
+              <span className="text-[14px] font-normal uppercase tracking-[0.8px] text-[#9BAFC0] md:text-[10px]" style={{ fontWeight: 400 }}>
                 Sort
               </span>
               {(
@@ -1528,7 +1528,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                   type="button"
                   onClick={() => setSortBy(key)}
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-normal transition-colors",
+                    "min-h-[44px] rounded-full px-3 py-2 text-[14px] font-normal transition-colors md:min-h-0 md:px-2 md:py-0.5 md:text-[10px]",
                     sortBy === key
                       ? "font-medium text-[#2F4156]"
                       : "text-[#9BAFC0] hover:text-[#567C8D]",
@@ -1542,10 +1542,10 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto lg:pr-1">
+        <div className="min-h-0 flex-1 md:max-h-[calc(100dvh-14rem)] md:overflow-y-auto md:pr-1 lg:max-h-[calc(100dvh-16rem)]">
           {!hasAnyTasks ? (
             <div
-              className="relative flex min-h-[min(52vh,26rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-14 text-center shadow-[0_4px_32px_rgba(47,65,86,0.06)] handset:min-h-[min(48vh,24rem)] handset:py-16"
+              className="relative flex min-h-[min(52vh,26rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-14 text-center shadow-[0_4px_32px_rgba(47,65,86,0.06)] md:min-h-[min(48vh,24rem)] md:py-16"
               role="region"
               aria-label="No tasks yet"
             >
@@ -1586,7 +1586,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             </div>
           ) : showAllDoneCelebration ? (
             <div
-              className="relative flex min-h-[min(58vh,32rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-16 text-center shadow-[0_4px_36px_rgba(47,65,86,0.07)] handset:min-h-[min(52vh,30rem)] handset:py-20"
+              className="relative flex min-h-[min(58vh,32rem)] flex-col items-center justify-center overflow-hidden rounded-[16px] border border-[#EEF3F7] bg-white px-6 py-16 text-center shadow-[0_4px_36px_rgba(47,65,86,0.07)] md:min-h-[min(52vh,30rem)] md:py-20"
               role="status"
               aria-live="polite"
               aria-label="All active tasks completed"
@@ -1620,11 +1620,11 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                   You cleared the list for this view. Enjoy the space — or line up what&apos;s next when
                   you&apos;re ready.
                 </p>
-                <div className="mt-10 flex w-full max-w-sm flex-col items-stretch gap-3 handset:flex-row handset:justify-center handset:gap-3">
+                <div className="mt-10 flex w-full max-w-sm flex-col items-stretch gap-3 md:flex-row md:justify-center md:gap-3">
                   <Button
                     type="button"
                     onClick={focusNewTaskInput}
-                    className="h-auto min-h-[48px] w-full rounded-[10px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 handset:min-h-0 handset:w-auto handset:px-8"
+                    className="h-auto min-h-[48px] w-full rounded-[10px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 md:min-h-0 md:w-auto md:px-8"
                     style={{ fontWeight: 500 }}
                   >
                     Add a task
@@ -1633,7 +1633,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                     type="button"
                     variant="outline"
                     onClick={() => setFilter("done")}
-                    className="h-auto min-h-[48px] w-full rounded-[10px] border-[#C8D9E6] bg-white/80 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F8FAFC] handset:min-h-0 handset:w-auto handset:px-6"
+                    className="h-auto min-h-[48px] w-full rounded-[10px] border-[#C8D9E6] bg-white/80 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F8FAFC] md:min-h-0 md:w-auto md:px-6"
                     style={{ fontWeight: 500 }}
                   >
                     Review completed
@@ -1642,7 +1642,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               </div>
             </div>
           ) : sortedVisible.length === 0 ? (
-            <div className="rounded-[14px] border border-dashed border-[#E3EBF2] bg-gradient-to-b from-[#FFFCFA] to-[#F8FAFC] px-6 py-12 text-center shadow-none handset:px-10">
+            <div className="rounded-[14px] border border-dashed border-[#E3EBF2] bg-gradient-to-b from-[#FFFCFA] to-[#F8FAFC] px-6 py-12 text-center shadow-none md:px-10">
               <p className="font-[family-name:var(--font-cormorant)] text-[22px] font-semibold italic leading-snug text-[#567C8D]">
                 Nothing in this view
               </p>
@@ -1675,14 +1675,14 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                         aria-hidden
                       />
 
-                      <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 handset:flex-row handset:items-start handset:justify-between handset:gap-4 handset:p-4 handset:pr-3">
+                      <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-5 md:flex-row md:items-start md:justify-between md:gap-4 md:px-4 md:py-4 md:pr-3">
                         <div className="flex min-w-0 flex-1 gap-3">
                           <div className="mt-0.5 flex shrink-0 items-start pt-0.5">
                             <Checkbox
                               checked={task.done}
                               onCheckedChange={(v) => onToggleDone(task.id, v === true)}
                               aria-label={`Mark done: ${task.title}`}
-                              className="h-[26px] w-[26px] rounded-full border-[1.5px] border-[#C8D9E6] bg-white text-white shadow-none ring-offset-0 focus-visible:ring-[#C8D9E6] data-[state=checked]:border-[#3A8D84] data-[state=checked]:bg-[#3A8D84] data-[state=checked]:text-white data-[state=unchecked]:bg-white handset:h-[22px] handset:w-[22px] [&_svg]:h-2.5 [&_svg]:w-2.5"
+                              className="h-[26px] w-[26px] rounded-full border-[1.5px] border-[#C8D9E6] bg-white text-white shadow-none ring-offset-0 focus-visible:ring-[#C8D9E6] data-[state=checked]:border-[#3A8D84] data-[state=checked]:bg-[#3A8D84] data-[state=checked]:text-white data-[state=unchecked]:bg-white md:h-[22px] md:w-[22px] [&_svg]:h-2.5 [&_svg]:w-2.5"
                             />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1744,7 +1744,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                               </button>
                             )}
                             <p
-                              className="mt-1 line-clamp-2 text-[13px] italic leading-relaxed text-[#9BAFC0]"
+                              className="mt-1 line-clamp-2 text-[14px] italic leading-relaxed text-[#9BAFC0] md:text-[13px]"
                               style={{ fontWeight: 400 }}
                             >
                               {task.rawInput}
@@ -1754,7 +1754,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                 type="button"
                                 disabled={pending}
                                 onClick={() => toggleNotesPanel(task)}
-                                className="text-[12px] font-normal text-[#567C8D] underline decoration-[#C8D9E6] underline-offset-2 hover:text-[#2F4156]"
+                                className="text-[14px] font-normal text-[#567C8D] underline decoration-[#C8D9E6] underline-offset-2 hover:text-[#2F4156] md:text-[12px]"
                                 style={{ fontWeight: 400 }}
                               >
                                 {notesExpandedId === task.id
@@ -2061,7 +2061,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                           type="button"
                           variant="ghost"
                           onClick={() => removeTask(task.id)}
-                          className="h-auto min-h-[44px] shrink-0 self-end px-3 py-2 text-[13px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] handset:min-h-0 handset:self-start handset:px-1 handset:py-0 handset:pt-0.5 handset:text-[12px]"
+                          className="h-auto min-h-[44px] shrink-0 self-end px-3 py-2 text-[13px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] md:min-h-0 md:self-start md:px-1 md:py-0 md:pt-0.5 md:text-[12px]"
                           style={{ fontWeight: 400 }}
                         >
                           Delete
