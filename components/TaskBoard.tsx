@@ -10,6 +10,7 @@ import {
   PartyPopper,
   Sparkles,
 } from "lucide-react";
+import type { Session } from "next-auth";
 import { useRouter } from "next/navigation";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -17,6 +18,7 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import {
   createTaskFromText,
   deleteTask,
+  exportProtocolDayToGoogleCalendar,
   getTodayPlan,
   getWhatNowRecommendations,
   setProtocolApproved,
@@ -32,6 +34,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
+import { taskOnCalendarDay } from "@/lib/task-calendar-day";
 import { useTaskVoiceInput } from "@/lib/use-task-voice-input";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +44,8 @@ export type TaskDTO = {
   title: string;
   priority: string;
   deadline: string | null;
+  /** When set (and no deadline), task is tied to this calendar day in list + protocol. */
+  calendarDate: string | null;
   done: boolean;
   protocolApproved: boolean;
   category: string | null;
@@ -319,13 +324,6 @@ function addDays(d: Date, delta: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + delta);
   return x;
-}
-
-function taskOnCalendarDay(task: TaskDTO, day: Date) {
-  if (!task.deadline) {
-    return isSameDay(day, new Date());
-  }
-  return isSameDay(new Date(task.deadline), day);
 }
 
 function priorityBarColor(priority: string) {
@@ -762,17 +760,25 @@ function TodaysProtocolColumn({
   protocolTasks,
   onRemoveFromProtocol,
   pending,
-  includeDemoTemplate,
   selectedDay,
+  initialDemoBlocks,
+  googleExportEnabled,
+  onExportToGoogleCalendar,
+  googleExportMessage,
+  googleExportError,
 }: {
   protocolTasks: TaskDTO[];
   onRemoveFromProtocol: (id: string) => void;
   pending: boolean;
-  /** When false (viewing another calendar day), only list tasks — no sample routine blocks. */
-  includeDemoTemplate: boolean;
   selectedDay: Date;
+  /** Per calendar day: sample routine only for “today”; empty for other days until user adds blocks. */
+  initialDemoBlocks: DemoProtocolBlock[];
+  googleExportEnabled: boolean;
+  onExportToGoogleCalendar?: () => void;
+  googleExportMessage?: string | null;
+  googleExportError?: string | null;
 }) {
-  const [demoBlocks, setDemoBlocks] = useState<DemoProtocolBlock[]>(() => [...INITIAL_DEMO_PROTOCOL]);
+  const [demoBlocks, setDemoBlocks] = useState<DemoProtocolBlock[]>(() => [...initialDemoBlocks]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DemoProtocolBlock | null>(null);
   const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
@@ -852,15 +858,13 @@ function TodaysProtocolColumn({
 
   const mergedTimeline = useMemo(() => {
     const entries: MergedEntry[] = [];
-    if (includeDemoTemplate) {
-      for (const block of sortedDemoBlocks) {
-        entries.push({
-          kind: "demo",
-          key: `demo-${block.id}`,
-          sortMin: protocolTimeToMinutes(block.time),
-          block,
-        });
-      }
+    for (const block of sortedDemoBlocks) {
+      entries.push({
+        kind: "demo",
+        key: `demo-${block.id}`,
+        sortMin: protocolTimeToMinutes(block.time),
+        block,
+      });
     }
     for (const task of protocolTasks) {
       entries.push({
@@ -875,7 +879,7 @@ function TodaysProtocolColumn({
       return a.key.localeCompare(b.key);
     });
     return entries;
-  }, [sortedDemoBlocks, protocolTasks, includeDemoTemplate]);
+  }, [sortedDemoBlocks, protocolTasks]);
 
   const viewingActualToday = isSameDay(selectedDay, new Date());
   const protocolTitle = viewingActualToday
@@ -941,7 +945,7 @@ function TodaysProtocolColumn({
         })}
       </ul>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col gap-2">
         <button
           type="button"
           onClick={addBlock}
@@ -950,6 +954,29 @@ function TodaysProtocolColumn({
         >
           + Add to your protocol
         </button>
+        {googleExportEnabled && onExportToGoogleCalendar ? (
+          <div className="flex flex-col gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={onExportToGoogleCalendar}
+              className="h-auto min-h-[44px] w-full max-w-xs rounded-[8px] border-[#C8D9E6] text-[13px] font-medium text-[#2F4156] shadow-none hover:bg-[#F8FAFC]"
+            >
+              Add this day to Google Calendar
+            </Button>
+            {googleExportError ? (
+              <p className="text-[12px] leading-snug text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                {googleExportError}
+              </p>
+            ) : null}
+            {googleExportMessage ? (
+              <p className="text-[12px] leading-snug text-[#567C8D]" style={{ fontWeight: 400 }}>
+                {googleExportMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </aside>
   );
@@ -959,7 +986,13 @@ type Filter = "all" | "active" | "done";
 
 type TaskSortBy = "deadline" | "priority" | "created";
 
-export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
+export function TaskBoard({
+  initialTasks,
+  session,
+}: {
+  initialTasks: TaskDTO[];
+  session: Session | null;
+}) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [sortBy, setSortBy] = useState<TaskSortBy>("deadline");
@@ -979,6 +1012,26 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [feeling, setFeeling] = useState<FeelingOption | null>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date>(() => startOfDay(new Date()));
+  const [googleExportBanner, setGoogleExportBanner] = useState<{
+    dayKey: string;
+    msg: string | null;
+    err: string | null;
+  } | null>(null);
+
+  const selectedDayKey = useMemo(() => {
+    const d = startOfDay(selectedDay);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, [selectedDay]);
+
+  const initialDemoBlocksForDay = useMemo(
+    () => (isSameDay(selectedDay, new Date()) ? [...INITIAL_DEMO_PROTOCOL] : []),
+    [selectedDay],
+  );
+
+  const googleExportMsg =
+    googleExportBanner?.dayKey === selectedDayKey ? googleExportBanner.msg : null;
+  const googleExportErr =
+    googleExportBanner?.dayKey === selectedDayKey ? googleExportBanner.err : null;
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
   const [detailsPriority, setDetailsPriority] = useState("medium");
   const [detailsCategory, setDetailsCategory] = useState("");
@@ -1081,8 +1134,6 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     [protocolTasksAll, selectedDay],
   );
 
-  const includeDemoTemplate = isSameDay(selectedDay, new Date());
-
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -1122,8 +1173,32 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
           setSelectedDay(startOfDay(new Date(t.deadline)));
         }
       }
-      await setProtocolApproved(id, approved);
+      await setProtocolApproved(
+        id,
+        approved,
+        approved ? startOfDay(selectedDay).toISOString() : null,
+      );
       router.refresh();
+    });
+  }
+
+  function exportThisDayToGoogleCalendar() {
+    const dayKey = selectedDayKey;
+    const dayIso = startOfDay(selectedDay).toISOString();
+    setGoogleExportBanner({ dayKey, msg: null, err: null });
+    startTransition(async () => {
+      const tz =
+        typeof window !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
+      const res = await exportProtocolDayToGoogleCalendar(dayIso, tz);
+      if (res.ok) {
+        setGoogleExportBanner({
+          dayKey,
+          msg: `Created ${res.created} event${res.created === 1 ? "" : "s"} in Google Calendar.`,
+          err: null,
+        });
+      } else {
+        setGoogleExportBanner({ dayKey, msg: null, err: res.error });
+      }
     });
   }
 
@@ -2078,10 +2153,15 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
         </div>
 
         <TodaysProtocolColumn
+          key={selectedDayKey}
           protocolTasks={protocolTasks}
           pending={pending}
-          includeDemoTemplate={includeDemoTemplate}
           selectedDay={selectedDay}
+          initialDemoBlocks={initialDemoBlocksForDay}
+          googleExportEnabled={Boolean(session?.user)}
+          onExportToGoogleCalendar={exportThisDayToGoogleCalendar}
+          googleExportMessage={googleExportMsg}
+          googleExportError={googleExportErr}
           onRemoveFromProtocol={(id) => toggleProtocolApproved(id, false)}
         />
       </div>

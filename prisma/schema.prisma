@@ -62,6 +62,8 @@ model Task {
   title             String
   priority          String // high / medium / low
   deadline          DateTime?
+  /** When set (and no deadline), task appears on this calendar day in list + protocol. */
+  calendarDate      DateTime?
   done              Boolean   @default(false)
   protocolApproved  Boolean   @default(false) // show on Today’s protocol
   category          String? // work | personal | learning (AI)

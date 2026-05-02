@@ -18,6 +18,7 @@ export default async function Home() {
     title: t.title,
     priority: t.priority,
     deadline: t.deadline ? t.deadline.toISOString() : null,
+    calendarDate: t.calendarDate ? t.calendarDate.toISOString() : null,
     done: t.done,
     protocolApproved: t.protocolApproved,
     category: t.category,
@@ -25,5 +26,5 @@ export default async function Home() {
     createdAt: t.createdAt.toISOString(),
   }));
 
-  return <TaskBoard initialTasks={tasks} />;
+  return <TaskBoard initialTasks={tasks} session={session} />;
 }

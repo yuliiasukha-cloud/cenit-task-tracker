@@ -31,10 +31,17 @@ export default async function SettingsPage() {
       </section>
 
       {session?.user ? (
-        <p className="mt-10 text-[14px] text-muted-foreground">
-          Signed in as{" "}
-          <span className="font-medium text-foreground">{session.user.email ?? session.user.name}</span>
-        </p>
+        <div className="mt-10 space-y-3 text-[14px] text-muted-foreground">
+          <p>
+            Signed in as{" "}
+            <span className="font-medium text-foreground">{session.user.email ?? session.user.name}</span>
+          </p>
+          <p>
+            Google Calendar: use <span className="font-medium text-foreground">Add this day to Google Calendar</span>{" "}
+            on the home page (protocol column). If export fails, sign out and sign in again so Calendar permission and a
+            refresh token are stored.
+          </p>
+        </div>
       ) : (
         <p className="mt-10 text-[14px] text-muted-foreground">
           Sign in to keep tasks synced to your account. Theme is stored on this browser until you change it.

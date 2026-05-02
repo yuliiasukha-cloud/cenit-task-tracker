@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { auth } from "@/auth";
+import { insertProtocolTasksAsCalendarEvents } from "@/lib/google-calendar-export";
 import { getPrisma } from "@/lib/prisma";
 import { taskByIdScopeWhere, taskScopeWhere } from "@/lib/task-scope";
 import { generateDayPlan, parseTaskFromText, recommendTopTasks } from "@/lib/parse-task";
@@ -48,19 +49,43 @@ export async function setTaskDone(id: string, done: boolean) {
     where: taskByIdScopeWhere(id, session?.user?.id),
     data: {
       done,
-      ...(done ? { protocolApproved: false } : {}),
+      ...(done ? { protocolApproved: false, calendarDate: null } : {}),
     },
   });
   if (r.count) revalidatePath("/");
 }
 
-export async function setProtocolApproved(id: string, protocolApproved: boolean) {
+export async function setProtocolApproved(
+  id: string,
+  protocolApproved: boolean,
+  anchorDayIso?: string | null,
+) {
   const session = await auth();
-  const r = await getPrisma().task.updateMany({
+  const prisma = getPrisma();
+  const task = await prisma.task.findFirst({
     where: taskByIdScopeWhere(id, session?.user?.id),
-    data: { protocolApproved },
   });
-  if (r.count) revalidatePath("/");
+  if (!task) return;
+
+  let calendarDate: Date | null = task.calendarDate;
+  if (protocolApproved) {
+    if (!task.deadline && anchorDayIso) {
+      const d = new Date(anchorDayIso);
+      if (!Number.isNaN(d.getTime())) {
+        calendarDate = d;
+      }
+    } else if (task.deadline) {
+      calendarDate = null;
+    }
+  } else {
+    calendarDate = null;
+  }
+
+  await prisma.task.update({
+    where: { id: task.id },
+    data: { protocolApproved, calendarDate },
+  });
+  revalidatePath("/");
 }
 
 export async function deleteTask(id: string) {
@@ -122,6 +147,7 @@ export async function updateTaskMeta(
       priority: prio,
       category: cat,
       deadline,
+      ...(payload.deadlineIso ? { calendarDate: null } : {}),
     },
   });
   if (r.count) revalidatePath("/");
@@ -160,6 +186,35 @@ export async function getTodayPlan() {
     return { ok: true as const, text };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not build today’s plan.";
+    return { ok: false as const, error: message };
+  }
+}
+
+export async function exportProtocolDayToGoogleCalendar(dayStartIso: string, eventTimeZone?: string | null) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { ok: false as const, error: "Sign in to export to Google Calendar." };
+  }
+  const day = new Date(dayStartIso);
+  if (Number.isNaN(day.getTime())) {
+    return { ok: false as const, error: "Invalid date." };
+  }
+  const h = await headers();
+  const tz =
+    (eventTimeZone && eventTimeZone.trim()) ||
+    h.get("x-vercel-ip-timezone") ||
+    h.get("x-timezone") ||
+    process.env.TASK_PARSER_TIMEZONE ||
+    "UTC";
+
+  try {
+    return await insertProtocolTasksAsCalendarEvents({
+      userId: session.user.id,
+      day,
+      eventTimeZone: tz,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Google Calendar export failed.";
     return { ok: false as const, error: message };
   }
 }

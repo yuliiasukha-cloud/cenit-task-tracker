@@ -8,7 +8,7 @@ import { PrismaClient } from "@/app/generated/prisma/client";
  * Prevents a stale PrismaClient on globalThis after `prisma generate` (Next dev HMR
  * can keep the old instance, which then throws e.g. "Unknown argument `category`").
  */
-const PRISMA_SCHEMA_TAG = "task-v4-auth-userid";
+const PRISMA_SCHEMA_TAG = "task-v5-calendar-date";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
