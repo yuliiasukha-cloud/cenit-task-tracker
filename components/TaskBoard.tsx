@@ -445,7 +445,18 @@ function priorityToProtocolLane(priority: string): ProtocolLane {
 
 function isOverdue(deadline: string | null, done: boolean) {
   if (done || !deadline) return false;
-  return new Date(deadline).getTime() < Date.now();
+  const d = new Date(deadline);
+  if (Number.isNaN(d.getTime())) return false;
+  /** Date-only deadlines (local midnight) stay valid through that calendar day. */
+  const isStartOfDay =
+    d.getHours() === 0 &&
+    d.getMinutes() === 0 &&
+    d.getSeconds() === 0 &&
+    d.getMilliseconds() === 0;
+  const limit = isStartOfDay
+    ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+    : d;
+  return limit.getTime() < Date.now();
 }
 
 function SectionDivider() {
@@ -1856,7 +1867,12 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                               {deadlineLabel ? (
                                 <Badge
                                   variant="secondary"
-                                  className="rounded-full border-0 bg-[#F5EFEB] px-2.5 py-1 text-[11px] font-normal text-[#567C8D] hover:bg-[#F5EFEB]"
+                                  className={cn(
+                                    "rounded-full border-0 px-2.5 py-1 text-[11px] font-normal hover:bg-opacity-100",
+                                    overdue && !task.done
+                                      ? "bg-[#FAECE7] text-[#E24B4A] ring-1 ring-[#F0C4C4] hover:bg-[#FAECE7]"
+                                      : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]",
+                                  )}
                                   style={{ fontWeight: 400 }}
                                 >
                                   {deadlineLabel}

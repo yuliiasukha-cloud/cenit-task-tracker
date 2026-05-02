@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { getPrisma } from "@/lib/prisma";
 import { generateDayPlan, parseTaskFromText, recommendTopTasks } from "@/lib/parse-task";
@@ -12,7 +13,10 @@ export async function createTaskFromText(rawInput: string) {
   }
 
   try {
-    const parsed = await parseTaskFromText(trimmed);
+    const h = await headers();
+    const tzFromRequest =
+      h.get("x-vercel-ip-timezone") ?? h.get("x-timezone") ?? process.env.TASK_PARSER_TIMEZONE ?? null;
+    const parsed = await parseTaskFromText(trimmed, { timeZone: tzFromRequest });
     await getPrisma().task.create({
       data: {
         rawInput: trimmed,

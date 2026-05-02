@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import OpenAI from "openai";
 
 export type ParsedTask = {
@@ -7,26 +8,51 @@ export type ParsedTask = {
   category: "work" | "personal" | "learning" | null;
 };
 
+export type ParseTaskOptions = {
+  /** IANA zone, e.g. Europe/Kyiv — from `x-vercel-ip-timezone` or TASK_PARSER_TIMEZONE. */
+  timeZone?: string | null;
+};
+
 function normalizePriority(value: unknown): "high" | "medium" | "low" {
   const s = String(value ?? "").toLowerCase();
   if (s === "high" || s === "medium" || s === "low") return s;
   return "medium";
 }
 
-function parseDeadline(value: unknown): Date | null {
+function safeIanaTimeZone(tz: string | undefined | null): string {
+  const fallback = "UTC";
+  if (!tz || !tz.trim()) return fallback;
+  const z = tz.trim();
+  const probe = DateTime.now().setZone(z);
+  return probe.isValid ? z : fallback;
+}
+
+function hasExplicitOffsetOrZ(s: string): boolean {
+  return /[zZ]$/.test(s) || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s);
+}
+
+/** Interpret model output as wall time in `timeZone` when no offset/Z is present. */
+function parseDeadline(value: unknown, timeZone: string): Date | null {
   if (value == null || value === "") return null;
-  const s = String(value).trim();
-  // Date-only → local midnight (avoids UTC-shift bugs for "Sunday")
+  const s0 = String(value).trim();
+  const s = s0.includes("T") ? s0 : s0.replace(/^(\d{4}-\d{2}-\d{2})[ ](\d)/, "$1T$2");
+
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (dateOnly) {
     const y = parseInt(dateOnly[1], 10);
-    const mo = parseInt(dateOnly[2], 10) - 1;
+    const mo = parseInt(dateOnly[2], 10);
     const d = parseInt(dateOnly[3], 10);
-    const loc = new Date(y, mo, d, 0, 0, 0, 0);
-    return Number.isNaN(loc.getTime()) ? null : loc;
+    const dt = DateTime.fromObject({ year: y, month: mo, day: d }, { zone: timeZone }).startOf("day");
+    return dt.isValid ? dt.toJSDate() : null;
   }
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+
+  if (!hasExplicitOffsetOrZ(s) && /^\d{4}-\d{2}-\d{2}T\d/.test(s)) {
+    const dt = DateTime.fromISO(s, { zone: timeZone });
+    return dt.isValid ? dt.toJSDate() : null;
+  }
+
+  const dt = DateTime.fromISO(s, { setZone: true });
+  return dt.isValid ? dt.toJSDate() : null;
 }
 
 function normalizeCategory(value: unknown): "work" | "personal" | "learning" | null {
@@ -35,21 +61,22 @@ function normalizeCategory(value: unknown): "work" | "personal" | "learning" | n
   return null;
 }
 
-export async function parseTaskFromText(rawInput: string): Promise<ParsedTask> {
+export async function parseTaskFromText(rawInput: string, options?: ParseTaskOptions): Promise<ParsedTask> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("Missing OPENAI_API_KEY");
   }
 
+  const timeZone = safeIanaTimeZone(
+    options?.timeZone ?? process.env.TASK_PARSER_TIMEZONE ?? undefined,
+  );
+  const nowZ = DateTime.now().setZone(timeZone);
+  const nowIsoUtc = nowZ.toUTC().toISO() ?? nowZ.toISO()!;
+  const localDateStr = nowZ.toISODate() ?? "";
+  const weekdayToday = nowZ.setLocale("en").toFormat("cccc");
+  const localHm = nowZ.toFormat("HH:mm");
+
   const openai = new OpenAI({ apiKey });
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const localY = now.getFullYear();
-  const localM = String(now.getMonth() + 1).padStart(2, "0");
-  const localD = String(now.getDate()).padStart(2, "0");
-  const localDateStr = `${localY}-${localM}-${localD}`;
-  const weekdayToday = weekdayNames[now.getDay()];
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -58,22 +85,27 @@ export async function parseTaskFromText(rawInput: string): Promise<ParsedTask> {
         role: "system",
         content: `You extract structured task data from the user's message.
 
-Clock context (use for ALL relative dates):
-- Current instant (ISO UTC): ${nowIso}
-- **Today's calendar date (local): ${localDateStr} (${weekdayToday}).**
+**Timezone (critical):** All calendar dates and clock times are in IANA zone **${timeZone}**.
+- "Today" means calendar date **${localDateStr}** in ${timeZone}.
+- "Tomorrow" is the next calendar day after ${localDateStr} in ${timeZone}.
+- Current instant (UTC, reference only): ${nowIsoUtc}
+- **Right now in ${timeZone}:** ${localDateStr} (${weekdayToday}), local time **${localHm}**.
 
-Weekday rules (critical — users get angry if this is wrong):
-- If the user says a weekday alone ("Sunday", "on Sunday", "this Sunday", "SUnday") **without** the word "next": choose the **earliest calendar date D** such that D is that weekday and **D is on or after ${localDateStr}** (same calendar day counts: if today IS that weekday, use today).
-- Example: if today is Saturday ${localDateStr}, "Sunday" means the very next calendar day (Sunday), not a random Thursday.
-- If they say **"next Sunday"** (explicit "next"): use the Sunday in the **week after** the week that contains today (if today is Sunday, "next Sunday" is 7 days later).
-- The weekday of your deadline **must match** the weekday the user asked for.
-- If no time of day is given, set **deadline to the calendar date only in form YYYY-MM-DD** (no time, no timezone letter). That encodes local midnight for that date.
-- If a specific time is given, use full ISO 8601 date-time for deadline instead.
+**Deadlines — match the user's words exactly:**
+- If they say **"today at 1 pm"** / **"today at 1:00 PM"** / **"at 1 pm today"**: use date **${localDateStr}** and **13:00** (24h) in ${timeZone}.
+- Map 12-hour times carefully: 1 pm → 13:00, 12 am → 00:00, 12 pm → 12:00.
+- If **no** time of day is given, use **YYYY-MM-DD** only (that calendar day in ${timeZone}, interpreted as start of that day).
+- If a **clock time** is given, use **YYYY-MM-DDTHH:mm** in 24-hour form (**no "Z"**, **no +00:00**) — that string is **wall time in ${timeZone}**, not UTC.
+- Do **not** use a trailing **Z** unless the user clearly meant UTC.
 
-Other relative phrases: "tomorrow", "before lunch", "next Friday", "end of day" — interpret from the current instant above.
+Weekday rules (still critical):
+- Weekday without "next": earliest that weekday **on or after** ${localDateStr} in ${timeZone}.
+- **"next Sunday"** (explicit "next"): Sunday in the week **after** the week containing ${localDateStr}.
+
+Other phrases ("before lunch", "end of day", "EOD"): interpret in ${timeZone}.
 
 Respond ONLY with valid JSON, no markdown, no explanation.
-The JSON object must have exactly these keys: "title" (string), "priority" (exactly one of: "high", "medium", "low"), "deadline" (YYYY-MM-DD for date-only at midnight, OR ISO date-time if a clock time is specified, or null if unknown), "category" (exactly one of: "work", "personal", "learning", or null if unclear).`,
+The JSON object must have exactly these keys: "title" (string), "priority" (exactly one of: "high", "medium", "low"), "deadline" (YYYY-MM-DD for date-only, OR YYYY-MM-DDTHH:mm for wall time in ${timeZone} without Z/offset, OR null), "category" (exactly one of: "work", "personal", "learning", or null if unclear).`,
       },
       { role: "user", content: rawInput },
     ],
@@ -99,7 +131,7 @@ The JSON object must have exactly these keys: "title" (string), "priority" (exac
   const obj = data as Record<string, unknown>;
   const title = String(obj.title ?? "").trim() || rawInput.trim().slice(0, 200);
   const priority = normalizePriority(obj.priority);
-  const deadline = parseDeadline(obj.deadline);
+  const deadline = parseDeadline(obj.deadline, timeZone);
   const category = normalizeCategory(obj.category);
 
   return { title, priority, deadline, category };
