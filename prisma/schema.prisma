@@ -17,5 +17,7 @@ model Task {
   deadline          DateTime?
   done              Boolean   @default(false)
   protocolApproved  Boolean   @default(false) // show on Today’s protocol
+  category          String? // work | personal | learning (AI)
+  notes             String? // user note on the task
   createdAt         DateTime  @default(now())
 }

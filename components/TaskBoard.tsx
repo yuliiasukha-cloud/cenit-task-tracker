@@ -7,9 +7,12 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import {
   createTaskFromText,
   deleteTask,
+  getTodayPlan,
   getWhatNowRecommendations,
   setProtocolApproved,
   setTaskDone,
+  updateTaskNotes,
+  updateTaskTitle,
 } from "@/app/actions";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +31,8 @@ export type TaskDTO = {
   deadline: string | null;
   done: boolean;
   protocolApproved: boolean;
+  category: string | null;
+  notes: string | null;
   createdAt: string;
 };
 
@@ -302,6 +307,37 @@ function priorityShortLabel(priority: string) {
   if (p === "high") return "High";
   if (p === "low") return "Low";
   return "Medium";
+}
+
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+function compareDeadlineThenCreated(a: TaskDTO, b: TaskDTO) {
+  if (a.deadline && b.deadline) {
+    const t = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    if (t !== 0) return t;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }
+  if (a.deadline && !b.deadline) return -1;
+  if (!a.deadline && b.deadline) return 1;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
+function comparePriorityThenDeadline(a: TaskDTO, b: TaskDTO) {
+  const pa = PRIORITY_ORDER[a.priority.toLowerCase()] ?? 1;
+  const pb = PRIORITY_ORDER[b.priority.toLowerCase()] ?? 1;
+  if (pa !== pb) return pa - pb;
+  return compareDeadlineThenCreated(a, b);
+}
+
+function taskCategoryChip(category: string | null | undefined) {
+  if (!category) return null;
+  const c = category.toLowerCase();
+  const map: Record<string, { bg: string; text: string; label: string }> = {
+    work: { bg: "#E8EFFA", text: "#4A5F8C", label: "Work" },
+    personal: { bg: "#F0ECFA", text: "#5A4D6E", label: "Personal" },
+    learning: { bg: "#E4F5F3", text: "#2F5E5A", label: "Learning" },
+  };
+  return map[c] ?? null;
 }
 
 function formatDeadline(iso: string | null) {
@@ -766,14 +802,25 @@ function TodaysProtocolColumn({
 
 type Filter = "all" | "active" | "done";
 
+type TaskSortBy = "deadline" | "priority" | "created";
+
 export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
+  const [sortBy, setSortBy] = useState<TaskSortBy>("deadline");
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [reco, setReco] = useState<{ title: string; reason: string }[] | null>(null);
   const [recoError, setRecoError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleEditError, setTitleEditError] = useState<string | null>(null);
+  const [notesExpandedId, setNotesExpandedId] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [planText, setPlanText] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
 
   const tasks = initialTasks;
 
@@ -785,6 +832,14 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     if (filter === "done") return tasks.filter((t) => t.done);
     return tasks;
   }, [tasks, filter]);
+
+  const sortedVisible = useMemo(() => {
+    const list = [...visible];
+    if (sortBy === "deadline") list.sort(compareDeadlineThenCreated);
+    else if (sortBy === "priority") list.sort(comparePriorityThenDeadline);
+    else list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  }, [visible, sortBy]);
 
   const activeCount = tasks.filter((t) => !t.done).length;
   const hasAnyTasks = tasks.length > 0;
@@ -852,6 +907,62 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       } else {
         setRecoError(res.error);
       }
+    });
+  }
+
+  async function onTodayPlan() {
+    setPlanLoading(true);
+    setPlanError(null);
+    setPlanText(null);
+    try {
+      const res = await getTodayPlan();
+      if (res.ok) setPlanText(res.text);
+      else setPlanError(res.error);
+    } finally {
+      setPlanLoading(false);
+    }
+  }
+
+  function beginTitleEdit(task: TaskDTO) {
+    if (task.done) return;
+    setEditingTitleId(task.id);
+    setTitleDraft(task.title);
+    setTitleEditError(null);
+    setNotesExpandedId(null);
+  }
+
+  function cancelTitleEdit() {
+    setEditingTitleId(null);
+    setTitleEditError(null);
+  }
+
+  function saveTitle(taskId: string) {
+    setTitleEditError(null);
+    startTransition(async () => {
+      const res = await updateTaskTitle(taskId, titleDraft);
+      if (res.ok) {
+        setEditingTitleId(null);
+        router.refresh();
+      } else {
+        setTitleEditError(res.error);
+      }
+    });
+  }
+
+  function toggleNotesPanel(task: TaskDTO) {
+    if (notesExpandedId === task.id) {
+      setNotesExpandedId(null);
+    } else {
+      setNotesExpandedId(task.id);
+      setNotesDraft(task.notes ?? "");
+    }
+  }
+
+  function saveNotesForTask(taskId: string) {
+    startTransition(async () => {
+      await updateTaskNotes(taskId, notesDraft);
+      setNotesExpandedId(null);
+      router.refresh();
     });
   }
 
@@ -934,6 +1045,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             >
               What should I do now?
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={planLoading || activeCount === 0}
+              onClick={onTodayPlan}
+              className="h-auto w-full rounded-[8px] border-[0.5px] border-[#C8D9E6] bg-transparent px-5 py-2.5 text-[14px] font-medium text-[#567C8D] shadow-none hover:bg-[#F5EFEB]/60 disabled:opacity-45"
+              style={{ fontWeight: 500 }}
+            >
+              {planLoading ? "Planning…" : "Today’s plan (AI)"}
+            </Button>
           </div>
         </form>
 
@@ -967,33 +1088,89 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             </CardContent>
           </Card>
         ) : null}
+        {planError ? (
+          <p className="mt-4 text-[13px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+            {planError}
+          </p>
+        ) : null}
+        {planText ? (
+          <Card
+            className="mt-4 rounded-[12px] border-0 bg-[#ECEEF6] shadow-none"
+            aria-live="polite"
+          >
+            <CardContent className="p-4 sm:p-5">
+              <h3 className="font-[family-name:var(--font-cormorant)] text-[20px] font-normal italic text-[#2F4156]">
+                Today’s plan
+              </h3>
+              <p
+                className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-[#2F4156]"
+                style={{ fontWeight: 400 }}
+              >
+                {planText}
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
           </section>
 
           <section className="flex min-h-0 flex-1 flex-col gap-3 py-0">
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["all", "All"],
-              ["active", "Active"],
-              ["done", "Done"],
-            ] as const
-          ).map(([key, label]) => (
-            <Button
-              key={key}
-              type="button"
-              variant={filter === key ? "default" : "secondary"}
-              onClick={() => setFilter(key)}
-              className={cn(
-                "h-auto rounded-full px-4 py-2 text-[12px] uppercase tracking-[1px] shadow-none",
-                filter === key
-                  ? "bg-[#2F4156] text-white hover:bg-[#2F4156] hover:text-white"
-                  : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]/90 hover:text-[#567C8D]",
-              )}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["all", "All"],
+                ["active", "Active"],
+                ["done", "Done"],
+              ] as const
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                type="button"
+                variant={filter === key ? "default" : "secondary"}
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "h-auto rounded-full px-4 py-2 text-[12px] uppercase tracking-[1px] shadow-none",
+                  filter === key
+                    ? "bg-[#2F4156] text-white hover:bg-[#2F4156] hover:text-white"
+                    : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]/90 hover:text-[#567C8D]",
+                )}
+                style={{ fontWeight: 500 }}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="text-[10px] font-medium uppercase tracking-[1.5px] text-[#9BAFC0]"
               style={{ fontWeight: 500 }}
             >
-              {label}
-            </Button>
-          ))}
+              Sort
+            </span>
+            {(
+              [
+                ["deadline", "Deadline"],
+                ["priority", "Priority"],
+                ["created", "Newest"],
+              ] as const
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                type="button"
+                variant={sortBy === key ? "default" : "secondary"}
+                onClick={() => setSortBy(key)}
+                className={cn(
+                  "h-auto rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.5px] shadow-none",
+                  sortBy === key
+                    ? "bg-[#567C8D] text-white hover:bg-[#567C8D] hover:text-white"
+                    : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]/90 hover:text-[#567C8D]",
+                )}
+                style={{ fontWeight: 500 }}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-4 min-h-0 flex-1 lg:max-h-[calc(100dvh-16rem)] lg:overflow-y-auto lg:pr-1">
@@ -1035,10 +1212,11 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">
-              {visible.map((task) => {
+              {sortedVisible.map((task) => {
                 const overdue = isOverdue(task.deadline, task.done);
                 const bar = priorityBarColor(task.priority);
                 const deadlineLabel = formatDeadline(task.deadline);
+                const cat = taskCategoryChip(task.category);
 
                 return (
                   <li key={task.id}>
@@ -1066,18 +1244,129 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p
-                              className={`text-[15px] font-medium leading-snug text-[#2F4156] ${task.done ? "line-through" : ""}`}
-                              style={{ fontWeight: 500 }}
-                            >
-                              {task.title}
-                            </p>
+                            {editingTitleId === task.id ? (
+                              <div className="flex flex-col gap-2">
+                                <input
+                                  type="text"
+                                  value={titleDraft}
+                                  onChange={(e) => setTitleDraft(e.target.value)}
+                                  disabled={pending}
+                                  className="w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2 text-[15px] font-medium leading-snug text-[#2F4156] focus-visible:border-[#C8D9E6] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C8D9E6]"
+                                  style={{ fontWeight: 500 }}
+                                  aria-label="Edit task title"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={pending}
+                                    onClick={() => saveTitle(task.id)}
+                                    className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={pending}
+                                    onClick={cancelTitleEdit}
+                                    className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                                {titleEditError ? (
+                                  <p className="text-[12px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                                    {titleEditError}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : task.done ? (
+                              <p
+                                className="text-[15px] font-medium leading-snug text-[#2F4156] line-through"
+                                style={{ fontWeight: 500 }}
+                              >
+                                {task.title}
+                              </p>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => beginTitleEdit(task)}
+                                className="w-full text-left text-[15px] font-medium leading-snug text-[#2F4156] hover:underline disabled:opacity-60"
+                                style={{ fontWeight: 500 }}
+                              >
+                                {task.title}
+                              </button>
+                            )}
                             <p
                               className="mt-1 line-clamp-2 text-[13px] italic leading-relaxed text-[#9BAFC0]"
                               style={{ fontWeight: 400 }}
                             >
                               {task.rawInput}
                             </p>
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => toggleNotesPanel(task)}
+                                className="text-[12px] font-normal text-[#567C8D] underline decoration-[#C8D9E6] underline-offset-2 hover:text-[#2F4156]"
+                                style={{ fontWeight: 400 }}
+                              >
+                                {notesExpandedId === task.id
+                                  ? "Close note"
+                                  : task.notes
+                                    ? "Edit note"
+                                    : "Add note"}
+                              </button>
+                              {notesExpandedId === task.id ? (
+                                <div className="mt-2 flex flex-col gap-2">
+                                  <Textarea
+                                    value={notesDraft}
+                                    onChange={(e) => setNotesDraft(e.target.value)}
+                                    rows={3}
+                                    disabled={pending}
+                                    placeholder="Your note…"
+                                    className="resize-y rounded-[10px] border-[#EEF3F7] text-[13px] text-[#2F4156]"
+                                    style={{ fontWeight: 400 }}
+                                    aria-label="Task note"
+                                  />
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={pending}
+                                      onClick={() => saveNotesForTask(task.id)}
+                                      className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
+                                      style={{ fontWeight: 500 }}
+                                    >
+                                      Save note
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={pending}
+                                      onClick={() => setNotesExpandedId(null)}
+                                      className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
+                                      style={{ fontWeight: 500 }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : task.notes ? (
+                                <p
+                                  className="mt-1 line-clamp-4 whitespace-pre-wrap text-[13px] leading-relaxed text-[#567C8D]"
+                                  style={{ fontWeight: 400 }}
+                                >
+                                  {task.notes}
+                                </p>
+                              ) : null}
+                            </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                               {!task.done ? (
                                 <Button
@@ -1123,6 +1412,19 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                               >
                                 {priorityShortLabel(task.priority)}
                               </Badge>
+                              {cat ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full border-0 px-2.5 py-1 text-[11px] font-medium hover:bg-opacity-100"
+                                  style={{
+                                    fontWeight: 500,
+                                    backgroundColor: cat.bg,
+                                    color: cat.text,
+                                  }}
+                                >
+                                  {cat.label}
+                                </Badge>
+                              ) : null}
                               {overdue && !task.done ? (
                                 <span
                                   className="text-[11px] font-medium text-[#E24B4A]"

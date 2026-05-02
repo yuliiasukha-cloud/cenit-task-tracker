@@ -16,6 +16,8 @@ export default async function Home() {
     deadline: t.deadline ? t.deadline.toISOString() : null,
     done: t.done,
     protocolApproved: t.protocolApproved,
+    category: t.category,
+    notes: t.notes,
     createdAt: t.createdAt.toISOString(),
   }));
 
