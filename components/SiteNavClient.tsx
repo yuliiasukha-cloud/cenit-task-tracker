@@ -44,6 +44,12 @@ export function SiteNavClient({ session }: SiteNavClientProps) {
           >
             Join Cénit
           </Link>
+          <Link
+            href="/tasks"
+            className="flex min-h-[44px] items-center text-[14px] font-normal leading-normal tracking-normal text-muted-foreground transition hover:text-foreground"
+          >
+            All tasks
+          </Link>
           <Button
             asChild
             variant="ghost"

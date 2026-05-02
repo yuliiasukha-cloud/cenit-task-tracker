@@ -9,6 +9,11 @@ import { getPrisma } from "@/lib/prisma";
 import { taskByIdScopeWhere, taskScopeWhere } from "@/lib/task-scope";
 import { generateDayPlan, parseTaskFromText, recommendTopTasks } from "@/lib/parse-task";
 
+function revalidateTaskRoutes() {
+  revalidatePath("/");
+  revalidatePath("/tasks");
+}
+
 export async function createTaskFromText(rawInput: string) {
   const trimmed = rawInput.trim();
   if (!trimmed) {
@@ -32,7 +37,7 @@ export async function createTaskFromText(rawInput: string) {
         userId,
       },
     });
-    revalidatePath("/");
+    revalidateTaskRoutes();
     return {
       ok: true as const,
       deadline: parsed.deadline ? parsed.deadline.toISOString() : null,
@@ -52,7 +57,7 @@ export async function setTaskDone(id: string, done: boolean) {
       ...(done ? { protocolApproved: false, calendarDate: null } : {}),
     },
   });
-  if (r.count) revalidatePath("/");
+  if (r.count) revalidateTaskRoutes();
 }
 
 export async function setProtocolApproved(
@@ -85,7 +90,7 @@ export async function setProtocolApproved(
     where: { id: task.id },
     data: { protocolApproved, calendarDate },
   });
-  revalidatePath("/");
+  revalidateTaskRoutes();
 }
 
 export async function deleteTask(id: string) {
@@ -93,7 +98,16 @@ export async function deleteTask(id: string) {
   const r = await getPrisma().task.deleteMany({
     where: taskByIdScopeWhere(id, session?.user?.id),
   });
-  if (r.count) revalidatePath("/");
+  if (r.count) revalidateTaskRoutes();
+}
+
+export async function deleteAllCompletedTasks() {
+  const session = await auth();
+  const r = await getPrisma().task.deleteMany({
+    where: { done: true, ...taskScopeWhere(session?.user?.id) },
+  });
+  revalidateTaskRoutes();
+  return { ok: true as const, deleted: r.count };
 }
 
 export async function updateTaskTitle(id: string, title: string) {
@@ -106,7 +120,7 @@ export async function updateTaskTitle(id: string, title: string) {
     where: taskByIdScopeWhere(id, session?.user?.id),
     data: { title: trimmed.slice(0, 500) },
   });
-  if (r.count) revalidatePath("/");
+  if (r.count) revalidateTaskRoutes();
   return r.count ? ({ ok: true as const } as const) : ({ ok: false as const, error: "Task not found." } as const);
 }
 
@@ -117,7 +131,7 @@ export async function updateTaskNotes(id: string, notes: string) {
     where: taskByIdScopeWhere(id, session?.user?.id),
     data: { notes: trimmed ? trimmed.slice(0, 8000) : null },
   });
-  if (r.count) revalidatePath("/");
+  if (r.count) revalidateTaskRoutes();
 }
 
 export async function updateTaskMeta(
@@ -150,7 +164,7 @@ export async function updateTaskMeta(
       ...(payload.deadlineIso ? { calendarDate: null } : {}),
     },
   });
-  if (r.count) revalidatePath("/");
+  if (r.count) revalidateTaskRoutes();
   return r.count ? ({ ok: true as const } as const) : ({ ok: false as const, error: "Task not found." } as const);
 }
 
