@@ -982,6 +982,10 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [detailsCategory, setDetailsCategory] = useState("");
   const [detailsDeadlineLocal, setDetailsDeadlineLocal] = useState("");
   const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [detailsFocusField, setDetailsFocusField] = useState<"deadline" | "priority" | "category" | null>(null);
+  const detailsDeadlineInputRef = useRef<HTMLInputElement>(null);
+  const detailsPrioritySelectRef = useRef<HTMLSelectElement>(null);
+  const detailsCategorySelectRef = useRef<HTMLSelectElement>(null);
 
   const tasks = initialTasks;
 
@@ -999,6 +1003,18 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     const el = root.querySelector<HTMLElement>('[aria-pressed="true"]');
     el?.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
   }, [selectedDay]);
+
+  useLayoutEffect(() => {
+    if (!detailsTaskId || detailsFocusField === null) return;
+    const field = detailsFocusField;
+    const id = requestAnimationFrame(() => {
+      if (field === "deadline") detailsDeadlineInputRef.current?.focus();
+      else if (field === "priority") detailsPrioritySelectRef.current?.focus();
+      else detailsCategorySelectRef.current?.focus();
+      setDetailsFocusField(null);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [detailsTaskId, detailsFocusField]);
 
   const visible = useMemo(() => {
     if (filter === "active") return tasks.filter((t) => !t.done);
@@ -1151,20 +1167,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     }
   }
 
-  function toggleDetailsPanel(task: TaskDTO) {
+  function openTaskDetailsSection(task: TaskDTO, section: "deadline" | "priority" | "category") {
     if (task.done) return;
-    if (detailsTaskId === task.id) {
-      setDetailsTaskId(null);
-      setDetailsError(null);
-    } else {
-      setDetailsTaskId(task.id);
-      setDetailsPriority(task.priority.toLowerCase());
-      setDetailsCategory(task.category?.toLowerCase() ?? "");
-      setDetailsDeadlineLocal(isoToDatetimeLocalValue(task.deadline));
-      setDetailsError(null);
-      setNotesExpandedId(null);
-      setEditingTitleId(null);
-    }
+    setDetailsTaskId(task.id);
+    setDetailsPriority(task.priority.toLowerCase());
+    setDetailsCategory(task.category?.toLowerCase() ?? "");
+    setDetailsDeadlineLocal(isoToDatetimeLocalValue(task.deadline));
+    setDetailsError(null);
+    setNotesExpandedId(null);
+    setEditingTitleId(null);
+    setDetailsFocusField(section);
   }
 
   function saveDetailsForTask(taskId: string) {
@@ -1733,119 +1745,6 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                 </p>
                               ) : null}
                             </div>
-                            {!task.done ? (
-                              <div className="mt-2">
-                                <button
-                                  type="button"
-                                  disabled={pending}
-                                  onClick={() => toggleDetailsPanel(task)}
-                                  className="text-[12px] font-normal text-[#567C8D] underline decoration-[#C8D9E6] underline-offset-2 hover:text-[#2F4156]"
-                                  style={{ fontWeight: 400 }}
-                                >
-                                  {detailsTaskId === task.id
-                                    ? "Close time & labels"
-                                    : "Edit time, priority & category"}
-                                </button>
-                                {detailsTaskId === task.id ? (
-                                  <div className="mt-2 space-y-3 rounded-[10px] border border-[#EEF3F7] bg-[#FAFCFF] px-3 py-3">
-                                    <div>
-                                      <span
-                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
-                                        style={{ fontWeight: 500 }}
-                                      >
-                                        Deadline
-                                      </span>
-                                      <input
-                                        type="datetime-local"
-                                        value={detailsDeadlineLocal}
-                                        onChange={(e) => setDetailsDeadlineLocal(e.target.value)}
-                                        disabled={pending}
-                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
-                                      />
-                                      <button
-                                        type="button"
-                                        disabled={pending}
-                                        onClick={() => setDetailsDeadlineLocal("")}
-                                        className="mt-1.5 text-[11px] font-normal text-[#567C8D] underline"
-                                        style={{ fontWeight: 400 }}
-                                      >
-                                        Clear deadline
-                                      </button>
-                                    </div>
-                                    <div>
-                                      <span
-                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
-                                        style={{ fontWeight: 500 }}
-                                      >
-                                        Priority
-                                      </span>
-                                      <select
-                                        value={detailsPriority}
-                                        onChange={(e) => setDetailsPriority(e.target.value)}
-                                        disabled={pending}
-                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
-                                        aria-label="Priority"
-                                      >
-                                        <option value="high">High</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="low">Low</option>
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <span
-                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
-                                        style={{ fontWeight: 500 }}
-                                      >
-                                        Category
-                                      </span>
-                                      <select
-                                        value={detailsCategory}
-                                        onChange={(e) => setDetailsCategory(e.target.value)}
-                                        disabled={pending}
-                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
-                                        aria-label="Category"
-                                      >
-                                        <option value="">None</option>
-                                        <option value="work">Work</option>
-                                        <option value="personal">Personal</option>
-                                        <option value="learning">Learning</option>
-                                      </select>
-                                    </div>
-                                    {detailsError ? (
-                                      <p className="text-[12px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
-                                        {detailsError}
-                                      </p>
-                                    ) : null}
-                                    <div className="flex flex-wrap gap-2 pt-0.5">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        disabled={pending}
-                                        onClick={() => saveDetailsForTask(task.id)}
-                                        className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
-                                        style={{ fontWeight: 500 }}
-                                      >
-                                        Save
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        disabled={pending}
-                                        onClick={() => {
-                                          setDetailsTaskId(null);
-                                          setDetailsError(null);
-                                        }}
-                                        className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
-                                        style={{ fontWeight: 500 }}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : null}
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                               {!task.done ? (
                                 <Button
@@ -1865,49 +1764,122 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                 </Button>
                               ) : null}
                               {deadlineLabel ? (
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    "rounded-full border-0 px-2.5 py-1 text-[11px] font-normal hover:bg-opacity-100",
-                                    overdue && !task.done
-                                      ? "bg-[#FAECE7] text-[#E24B4A] ring-1 ring-[#F0C4C4] hover:bg-[#FAECE7]"
-                                      : "bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]",
-                                  )}
+                                !task.done ? (
+                                  <button
+                                    type="button"
+                                    disabled={pending}
+                                    onClick={() => openTaskDetailsSection(task, "deadline")}
+                                    className={cn(
+                                      "inline-flex min-h-[36px] max-w-full shrink-0 items-center rounded-full border-0 px-2.5 py-1 text-[11px] font-normal transition hover:brightness-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-1 disabled:opacity-50",
+                                      overdue && !task.done
+                                        ? "bg-[#FAECE7] text-[#E24B4A] ring-1 ring-[#F0C4C4]"
+                                        : "bg-[#F5EFEB] text-[#567C8D]",
+                                    )}
+                                    style={{ fontWeight: 400 }}
+                                    aria-label={`Edit deadline, currently ${deadlineLabel}`}
+                                  >
+                                    {deadlineLabel}
+                                  </button>
+                                ) : (
+                                  <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                      "rounded-full border-0 px-2.5 py-1 text-[11px] font-normal",
+                                      overdue && !task.done
+                                        ? "bg-[#FAECE7] text-[#E24B4A] ring-1 ring-[#F0C4C4]"
+                                        : "bg-[#F5EFEB] text-[#567C8D]",
+                                    )}
+                                    style={{ fontWeight: 400 }}
+                                  >
+                                    {deadlineLabel}
+                                  </Badge>
+                                )
+                              ) : !task.done ? (
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => openTaskDetailsSection(task, "deadline")}
+                                  className="inline-flex min-h-[36px] shrink-0 items-center rounded-full border-0 bg-[#F5EFEB] px-2.5 py-1 text-[11px] font-normal text-[#9BAFC0] transition hover:brightness-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-1 disabled:opacity-50"
                                   style={{ fontWeight: 400 }}
+                                  aria-label="Set deadline"
                                 >
-                                  {deadlineLabel}
-                                </Badge>
+                                  No deadline
+                                </button>
                               ) : (
                                 <Badge
                                   variant="secondary"
-                                  className="rounded-full border-0 bg-[#F5EFEB] px-2.5 py-1 text-[11px] font-normal text-[#9BAFC0] hover:bg-[#F5EFEB]"
+                                  className="rounded-full border-0 bg-[#F5EFEB] px-2.5 py-1 text-[11px] font-normal text-[#9BAFC0]"
                                   style={{ fontWeight: 400 }}
                                 >
                                   No deadline
                                 </Badge>
                               )}
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  "rounded-full border-0 px-2.5 py-1 text-[11px] font-medium hover:bg-opacity-100",
-                                  priorityPillClass(task.priority),
-                                )}
-                                style={{ fontWeight: 500 }}
-                              >
-                                {priorityShortLabel(task.priority)}
-                              </Badge>
-                              {cat ? (
+                              {!task.done ? (
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => openTaskDetailsSection(task, "priority")}
+                                  className={cn(
+                                    "inline-flex min-h-[36px] shrink-0 items-center rounded-full border-0 px-2.5 py-1 text-[11px] font-medium transition hover:brightness-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-1 disabled:opacity-50",
+                                    priorityPillClass(task.priority),
+                                  )}
+                                  style={{ fontWeight: 500 }}
+                                  aria-label={`Edit priority, currently ${priorityShortLabel(task.priority)}`}
+                                >
+                                  {priorityShortLabel(task.priority)}
+                                </button>
+                              ) : (
                                 <Badge
                                   variant="secondary"
-                                  className="rounded-full border-0 px-2.5 py-1 text-[11px] font-medium hover:bg-opacity-100"
-                                  style={{
-                                    fontWeight: 500,
-                                    backgroundColor: cat.bg,
-                                    color: cat.text,
-                                  }}
+                                  className={cn(
+                                    "rounded-full border-0 px-2.5 py-1 text-[11px] font-medium",
+                                    priorityPillClass(task.priority),
+                                  )}
+                                  style={{ fontWeight: 500 }}
                                 >
-                                  {cat.label}
+                                  {priorityShortLabel(task.priority)}
                                 </Badge>
+                              )}
+                              {cat ? (
+                                !task.done ? (
+                                  <button
+                                    type="button"
+                                    disabled={pending}
+                                    onClick={() => openTaskDetailsSection(task, "category")}
+                                    className="inline-flex min-h-[36px] max-w-full shrink-0 items-center rounded-full border-0 px-2.5 py-1 text-[11px] font-medium transition hover:brightness-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-1 disabled:opacity-50"
+                                    style={{
+                                      fontWeight: 500,
+                                      backgroundColor: cat.bg,
+                                      color: cat.text,
+                                    }}
+                                    aria-label={`Edit category, currently ${cat.label}`}
+                                  >
+                                    {cat.label}
+                                  </button>
+                                ) : (
+                                  <Badge
+                                    variant="secondary"
+                                    className="rounded-full border-0 px-2.5 py-1 text-[11px] font-medium"
+                                    style={{
+                                      fontWeight: 500,
+                                      backgroundColor: cat.bg,
+                                      color: cat.text,
+                                    }}
+                                  >
+                                    {cat.label}
+                                  </Badge>
+                                )
+                              ) : !task.done ? (
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => openTaskDetailsSection(task, "category")}
+                                  className="inline-flex min-h-[36px] shrink-0 items-center rounded-full border border-dashed border-[#D4DDE8] bg-[#FAFCFF] px-2.5 py-1 text-[11px] font-normal text-[#9BAFC0] transition hover:border-[#C8D9E6] hover:text-[#567C8D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-1 disabled:opacity-50"
+                                  style={{ fontWeight: 400 }}
+                                  aria-label="Set category"
+                                >
+                                  No category
+                                </button>
                               ) : null}
                               {overdue && !task.done ? (
                                 <span
@@ -1918,6 +1890,107 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                 </span>
                               ) : null}
                             </div>
+                            {!task.done && detailsTaskId === task.id ? (
+                              <div className="mt-3 space-y-3 rounded-[10px] border border-[#EEF3F7] bg-[#FAFCFF] px-3 py-3">
+                                <div>
+                                  <span
+                                    className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Deadline
+                                  </span>
+                                  <input
+                                    ref={detailsDeadlineInputRef}
+                                    type="datetime-local"
+                                    value={detailsDeadlineLocal}
+                                    onChange={(e) => setDetailsDeadlineLocal(e.target.value)}
+                                    disabled={pending}
+                                    className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={pending}
+                                    onClick={() => setDetailsDeadlineLocal("")}
+                                    className="mt-1.5 text-[11px] font-normal text-[#567C8D] underline"
+                                    style={{ fontWeight: 400 }}
+                                  >
+                                    Clear deadline
+                                  </button>
+                                </div>
+                                <div>
+                                  <span
+                                    className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Priority
+                                  </span>
+                                  <select
+                                    ref={detailsPrioritySelectRef}
+                                    value={detailsPriority}
+                                    onChange={(e) => setDetailsPriority(e.target.value)}
+                                    disabled={pending}
+                                    className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                    aria-label="Priority"
+                                  >
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <span
+                                    className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Category
+                                  </span>
+                                  <select
+                                    ref={detailsCategorySelectRef}
+                                    value={detailsCategory}
+                                    onChange={(e) => setDetailsCategory(e.target.value)}
+                                    disabled={pending}
+                                    className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                    aria-label="Category"
+                                  >
+                                    <option value="">None</option>
+                                    <option value="work">Work</option>
+                                    <option value="personal">Personal</option>
+                                    <option value="learning">Learning</option>
+                                  </select>
+                                </div>
+                                {detailsError ? (
+                                  <p className="text-[12px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                                    {detailsError}
+                                  </p>
+                                ) : null}
+                                <div className="flex flex-wrap gap-2 pt-0.5">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={pending}
+                                    onClick={() => saveDetailsForTask(task.id)}
+                                    className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={pending}
+                                    onClick={() => {
+                                      setDetailsTaskId(null);
+                                      setDetailsError(null);
+                                    }}
+                                    className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
