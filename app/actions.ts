@@ -23,7 +23,10 @@ export async function createTaskFromText(rawInput: string) {
       },
     });
     revalidatePath("/");
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      deadline: parsed.deadline ? parsed.deadline.toISOString() : null,
+    };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Something went wrong.";
     return { ok: false as const, error: message };
@@ -74,6 +77,38 @@ export async function updateTaskNotes(id: string, notes: string) {
     data: { notes: trimmed ? trimmed.slice(0, 8000) : null },
   });
   revalidatePath("/");
+}
+
+export async function updateTaskMeta(
+  id: string,
+  payload: { priority: string; category: string | null; deadlineIso: string | null },
+) {
+  const prio = payload.priority.toLowerCase();
+  if (prio !== "high" && prio !== "medium" && prio !== "low") {
+    return { ok: false as const, error: "Priority must be high, medium, or low." };
+  }
+  const cat = payload.category?.toLowerCase().trim() || null;
+  if (cat && cat !== "work" && cat !== "personal" && cat !== "learning") {
+    return { ok: false as const, error: "Category must be work, personal, learning, or empty." };
+  }
+  let deadline: Date | null = null;
+  if (payload.deadlineIso) {
+    const d = new Date(payload.deadlineIso);
+    if (Number.isNaN(d.getTime())) {
+      return { ok: false as const, error: "Invalid deadline." };
+    }
+    deadline = d;
+  }
+  await getPrisma().task.update({
+    where: { id },
+    data: {
+      priority: prio,
+      category: cat,
+      deadline,
+    },
+  });
+  revalidatePath("/");
+  return { ok: true as const };
 }
 
 export async function getWhatNowRecommendations() {

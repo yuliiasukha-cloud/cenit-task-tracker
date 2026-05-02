@@ -12,6 +12,7 @@ import {
   getWhatNowRecommendations,
   setProtocolApproved,
   setTaskDone,
+  updateTaskMeta,
   updateTaskNotes,
   updateTaskTitle,
 } from "@/app/actions";
@@ -298,6 +299,19 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function taskOnCalendarDay(task: TaskDTO, day: Date) {
+  if (!task.deadline) {
+    return isSameDay(day, new Date());
+  }
+  return isSameDay(new Date(task.deadline), day);
+}
+
 function priorityBarColor(priority: string) {
   const p = priority.toLowerCase();
   if (p === "high") return "#E24B4A";
@@ -361,6 +375,24 @@ function formatDeadline(iso: string | null) {
     minute: "2-digit",
   }).format(d);
 }
+
+function isoToDatetimeLocalValue(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function datetimeLocalValueToIso(value: string): string | null {
+  if (!value.trim()) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+const DETAILS_SELECT_CLASS =
+  "mt-0.5 w-full max-w-[260px] rounded-[8px] border border-[#EEF3F7] bg-white px-2 py-1.5 text-[13px] text-[#2F4156]";
 
 /** 24h HH:MM for protocol calendar column (matches demo block times). */
 function formatProtocolTime24(iso: string | null) {
@@ -692,10 +724,13 @@ function TodaysProtocolColumn({
   protocolTasks,
   onRemoveFromProtocol,
   pending,
+  includeDemoTemplate,
 }: {
   protocolTasks: TaskDTO[];
   onRemoveFromProtocol: (id: string) => void;
   pending: boolean;
+  /** When false (viewing another calendar day), only list tasks — no sample routine blocks. */
+  includeDemoTemplate: boolean;
 }) {
   const [demoBlocks, setDemoBlocks] = useState<DemoProtocolBlock[]>(() => [...INITIAL_DEMO_PROTOCOL]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -777,13 +812,15 @@ function TodaysProtocolColumn({
 
   const mergedTimeline = useMemo(() => {
     const entries: MergedEntry[] = [];
-    for (const block of sortedDemoBlocks) {
-      entries.push({
-        kind: "demo",
-        key: `demo-${block.id}`,
-        sortMin: protocolTimeToMinutes(block.time),
-        block,
-      });
+    if (includeDemoTemplate) {
+      for (const block of sortedDemoBlocks) {
+        entries.push({
+          kind: "demo",
+          key: `demo-${block.id}`,
+          sortMin: protocolTimeToMinutes(block.time),
+          block,
+        });
+      }
     }
     for (const task of protocolTasks) {
       entries.push({
@@ -798,7 +835,7 @@ function TodaysProtocolColumn({
       return a.key.localeCompare(b.key);
     });
     return entries;
-  }, [sortedDemoBlocks, protocolTasks]);
+  }, [sortedDemoBlocks, protocolTasks, includeDemoTemplate]);
 
   return (
     <aside className="flex min-w-0 flex-[2] basis-0 flex-col lg:sticky lg:top-4 lg:self-start lg:pl-8">
@@ -892,11 +929,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [planError, setPlanError] = useState<string | null>(null);
   const [feeling, setFeeling] = useState<FeelingOption | null>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<Date>(() => startOfDay(new Date()));
+  const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
+  const [detailsPriority, setDetailsPriority] = useState("medium");
+  const [detailsCategory, setDetailsCategory] = useState("");
+  const [detailsDeadlineLocal, setDetailsDeadlineLocal] = useState("");
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   const tasks = initialTasks;
 
-  const weekDays = useMemo(() => weekDaysMondayFirst(new Date()), []);
-  const today = useMemo(() => new Date(), []);
+  const weekDays = useMemo(() => weekDaysMondayFirst(selectedDay), [selectedDay]);
 
   const visible = useMemo(() => {
     if (filter === "active") return tasks.filter((t) => !t.done);
@@ -904,18 +946,23 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     return tasks;
   }, [tasks, filter]);
 
+  const visibleForSelectedDay = useMemo(
+    () => visible.filter((t) => taskOnCalendarDay(t, selectedDay)),
+    [visible, selectedDay],
+  );
+
   const sortedVisible = useMemo(() => {
-    const list = [...visible];
+    const list = [...visibleForSelectedDay];
     if (sortBy === "deadline") list.sort(compareDeadlineThenCreated);
     else if (sortBy === "priority") list.sort(comparePriorityThenDeadline);
     else list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
-  }, [visible, sortBy]);
+  }, [visibleForSelectedDay, sortBy]);
 
   const activeCount = tasks.filter((t) => !t.done).length;
   const hasAnyTasks = tasks.length > 0;
 
-  const protocolTasks = useMemo(
+  const protocolTasksAll = useMemo(
     () =>
       [...tasks]
         .filter((t) => t.protocolApproved && !t.done)
@@ -930,6 +977,13 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     [tasks],
   );
 
+  const protocolTasks = useMemo(
+    () => protocolTasksAll.filter((t) => taskOnCalendarDay(t, selectedDay)),
+    [protocolTasksAll, selectedDay],
+  );
+
+  const includeDemoTemplate = isSameDay(selectedDay, new Date());
+
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -940,6 +994,9 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       const res = await createTaskFromText(text);
       if (res.ok) {
         setInput("");
+        if (res.deadline) {
+          setSelectedDay(startOfDay(new Date(res.deadline)));
+        }
         router.refresh();
       } else {
         setError(res.error);
@@ -963,6 +1020,12 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
   function toggleProtocolApproved(id: string, approved: boolean) {
     startTransition(async () => {
+      if (approved) {
+        const t = tasks.find((x) => x.id === id);
+        if (t?.deadline) {
+          setSelectedDay(startOfDay(new Date(t.deadline)));
+        }
+      }
       await setProtocolApproved(id, approved);
       router.refresh();
     });
@@ -995,6 +1058,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     setTitleDraft(task.title);
     setTitleEditError(null);
     setNotesExpandedId(null);
+    setDetailsTaskId(null);
   }
 
   function cancelTitleEdit() {
@@ -1021,7 +1085,43 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
     } else {
       setNotesExpandedId(task.id);
       setNotesDraft(task.notes ?? "");
+      setDetailsTaskId(null);
     }
+  }
+
+  function toggleDetailsPanel(task: TaskDTO) {
+    if (task.done) return;
+    if (detailsTaskId === task.id) {
+      setDetailsTaskId(null);
+      setDetailsError(null);
+    } else {
+      setDetailsTaskId(task.id);
+      setDetailsPriority(task.priority.toLowerCase());
+      setDetailsCategory(task.category?.toLowerCase() ?? "");
+      setDetailsDeadlineLocal(isoToDatetimeLocalValue(task.deadline));
+      setDetailsError(null);
+      setNotesExpandedId(null);
+      setEditingTitleId(null);
+    }
+  }
+
+  function saveDetailsForTask(taskId: string) {
+    setDetailsError(null);
+    startTransition(async () => {
+      const catRaw = detailsCategory.trim().toLowerCase();
+      const cat = catRaw === "" ? null : catRaw;
+      const res = await updateTaskMeta(taskId, {
+        priority: detailsPriority,
+        category: cat,
+        deadlineIso: datetimeLocalValueToIso(detailsDeadlineLocal),
+      });
+      if (res.ok) {
+        setDetailsTaskId(null);
+        router.refresh();
+      } else {
+        setDetailsError(res.error);
+      }
+    });
   }
 
   function saveNotesForTask(taskId: string) {
@@ -1039,10 +1139,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       <section className="py-0.5">
         <div className="flex justify-between gap-1 overflow-x-auto pb-0 sm:gap-2 sm:pb-0.5">
           {weekDays.map((d, i) => {
-            const isToday = isSameDay(d, today);
+            const isToday = isSameDay(d, new Date());
+            const isSelected = isSameDay(d, selectedDay);
+            const label = `${WEEKDAY_SHORT[i]} ${d.getDate()}`;
             return (
-              <div
-                key={d.toISOString()}
+              <button
+                key={`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
+                type="button"
+                onClick={() => setSelectedDay(startOfDay(d))}
+                aria-pressed={isSelected}
+                aria-label={`View tasks for ${label}`}
                 className="flex min-w-[2.75rem] flex-1 flex-col items-center gap-1 text-center sm:min-w-0"
               >
                 <span
@@ -1053,16 +1159,18 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 </span>
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center text-[13px] font-medium leading-none",
-                    isToday
-                      ? "rounded-full bg-[#567C8D] text-white"
-                      : "rounded-full text-[#5F7082]",
+                    "flex h-7 w-7 shrink-0 items-center justify-center text-[13px] font-medium leading-none transition-colors",
+                    isSelected
+                      ? "rounded-full bg-[#2F4156] text-white"
+                      : isToday
+                        ? "rounded-full bg-[#567C8D] text-white"
+                        : "rounded-full text-[#5F7082] hover:bg-[#F5EFEB]",
                   )}
                   style={{ fontWeight: 500 }}
                 >
                   {d.getDate()}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -1273,14 +1381,16 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 </p>
               </CardContent>
             </Card>
-          ) : visible.length === 0 ? (
+          ) : sortedVisible.length === 0 ? (
             <Card className="rounded-[12px] border border-dashed border-[#EEF3F7] bg-[#F5EFEB]/30 shadow-none">
               <CardContent className="px-6 py-10 text-center sm:px-8">
                 <p className="font-[family-name:var(--font-cormorant)] text-[20px] italic text-[#567C8D]">
                   Nothing in this view
                 </p>
                 <p className="mt-2 text-[13px] text-[#9BAFC0]" style={{ fontWeight: 400 }}>
-                  Try another filter.
+                  {visible.length === 0
+                    ? "Try another filter."
+                    : `No tasks for ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })} — tap another day above, or change a deadline.`}
                 </p>
               </CardContent>
             </Card>
@@ -1441,6 +1551,119 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                 </p>
                               ) : null}
                             </div>
+                            {!task.done ? (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => toggleDetailsPanel(task)}
+                                  className="text-[12px] font-normal text-[#567C8D] underline decoration-[#C8D9E6] underline-offset-2 hover:text-[#2F4156]"
+                                  style={{ fontWeight: 400 }}
+                                >
+                                  {detailsTaskId === task.id
+                                    ? "Close time & labels"
+                                    : "Edit time, priority & category"}
+                                </button>
+                                {detailsTaskId === task.id ? (
+                                  <div className="mt-2 space-y-3 rounded-[10px] border border-[#EEF3F7] bg-[#FAFCFF] px-3 py-3">
+                                    <div>
+                                      <span
+                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                        style={{ fontWeight: 500 }}
+                                      >
+                                        Deadline
+                                      </span>
+                                      <input
+                                        type="datetime-local"
+                                        value={detailsDeadlineLocal}
+                                        onChange={(e) => setDetailsDeadlineLocal(e.target.value)}
+                                        disabled={pending}
+                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={pending}
+                                        onClick={() => setDetailsDeadlineLocal("")}
+                                        className="mt-1.5 text-[11px] font-normal text-[#567C8D] underline"
+                                        style={{ fontWeight: 400 }}
+                                      >
+                                        Clear deadline
+                                      </button>
+                                    </div>
+                                    <div>
+                                      <span
+                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                        style={{ fontWeight: 500 }}
+                                      >
+                                        Priority
+                                      </span>
+                                      <select
+                                        value={detailsPriority}
+                                        onChange={(e) => setDetailsPriority(e.target.value)}
+                                        disabled={pending}
+                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                        aria-label="Priority"
+                                      >
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <span
+                                        className="text-[10px] font-medium uppercase tracking-wide text-[#9BAFC0]"
+                                        style={{ fontWeight: 500 }}
+                                      >
+                                        Category
+                                      </span>
+                                      <select
+                                        value={detailsCategory}
+                                        onChange={(e) => setDetailsCategory(e.target.value)}
+                                        disabled={pending}
+                                        className={`${DETAILS_SELECT_CLASS} mt-1 block`}
+                                        aria-label="Category"
+                                      >
+                                        <option value="">None</option>
+                                        <option value="work">Work</option>
+                                        <option value="personal">Personal</option>
+                                        <option value="learning">Learning</option>
+                                      </select>
+                                    </div>
+                                    {detailsError ? (
+                                      <p className="text-[12px] text-[#E24B4A]" style={{ fontWeight: 400 }}>
+                                        {detailsError}
+                                      </p>
+                                    ) : null}
+                                    <div className="flex flex-wrap gap-2 pt-0.5">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={pending}
+                                        onClick={() => saveDetailsForTask(task.id)}
+                                        className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
+                                        style={{ fontWeight: 500 }}
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={pending}
+                                        onClick={() => {
+                                          setDetailsTaskId(null);
+                                          setDetailsError(null);
+                                        }}
+                                        className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
+                                        style={{ fontWeight: 500 }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                               {!task.done ? (
                                 <Button
@@ -1534,6 +1757,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
         <TodaysProtocolColumn
           protocolTasks={protocolTasks}
           pending={pending}
+          includeDemoTemplate={includeDemoTemplate}
           onRemoveFromProtocol={(id) => toggleProtocolApproved(id, false)}
         />
       </div>
