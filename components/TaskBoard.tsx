@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -392,7 +392,7 @@ function datetimeLocalValueToIso(value: string): string | null {
 }
 
 const DETAILS_SELECT_CLASS =
-  "mt-0.5 w-full max-w-[260px] rounded-[8px] border border-[#EEF3F7] bg-white px-2 py-1.5 text-[13px] text-[#2F4156]";
+  "mt-0.5 w-full max-w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2.5 text-[16px] text-[#2F4156] sm:max-w-[260px] sm:px-2 sm:py-1.5 sm:text-[13px]";
 
 /** 24h HH:MM for protocol calendar column (matches demo block times). */
 function formatProtocolTime24(iso: string | null) {
@@ -439,6 +439,17 @@ function SectionDivider() {
     <div className="py-2" role="presentation">
       <div className="h-[0.5px] w-full bg-[#EEF3F7]" />
     </div>
+  );
+}
+
+function ProtocolPaneIcon() {
+  return (
+    <span
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EEF3F7] ring-1 ring-[#E3EBF2]"
+      aria-hidden
+    >
+      <ClipboardList className="h-3.5 w-3.5 text-[#567C8D]" strokeWidth={2} />
+    </span>
   );
 }
 
@@ -490,11 +501,11 @@ function ProtocolRow({
               {chip}
             </span>
           </div>
-          <div className="mt-1 flex items-start justify-between gap-2">
+          <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <p className="min-w-0 flex-1 text-[10px] font-normal leading-snug text-[#567C8D]" style={{ fontWeight: 400 }}>
               {subtitle}
             </p>
-            {rightAction ? <div className="shrink-0">{rightAction}</div> : null}
+            {rightAction ? <div className="shrink-0 self-start sm:self-auto">{rightAction}</div> : null}
           </div>
         </div>
       </div>
@@ -549,7 +560,7 @@ function DemoProtocolTimelineBlock({
           <button
             type="button"
             aria-label="Remove block"
-            className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full text-[14px] leading-none text-[#9BAFC0] opacity-0 transition-opacity duration-150 hover:bg-[#F5EFEB] hover:text-[#567C8D] group-hover:opacity-100"
+            className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full text-[15px] leading-none text-[#9BAFC0] opacity-100 transition-opacity duration-150 hover:bg-[#F5EFEB] hover:text-[#567C8D] sm:h-6 sm:w-6 sm:text-[14px] sm:opacity-0 sm:group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
@@ -601,7 +612,7 @@ function DemoProtocolTimelineBlock({
                   type="time"
                   value={draft.time.length >= 5 ? draft.time.slice(0, 5) : draft.time}
                   onChange={(e) => setDraft((d) => (d ? { ...d, time: e.target.value } : d))}
-                  className="rounded-md border border-[#EEF3F7] bg-white px-2 py-1.5 text-[12px] text-[#2F4156]"
+                  className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] sm:py-1.5 sm:text-[12px]"
                   style={{ fontWeight: 400 }}
                 />
               </label>
@@ -611,7 +622,7 @@ function DemoProtocolTimelineBlock({
                   type="text"
                   value={draft.activity}
                   onChange={(e) => setDraft((d) => (d ? { ...d, activity: e.target.value } : d))}
-                  className="w-full rounded-md border border-[#EEF3F7] bg-white px-2 py-1.5 text-[13px] text-[#2F4156]"
+                  className="w-full rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] text-[#2F4156] sm:py-1.5 sm:text-[13px]"
                   style={{ fontWeight: 400 }}
                   placeholder="Activity name"
                 />
@@ -626,7 +637,7 @@ function DemoProtocolTimelineBlock({
                     d ? { ...d, protocolCategory: e.target.value as ProtocolCategoryKey } : d,
                   )
                 }
-                className="rounded-md border border-[#EEF3F7] bg-white px-2 py-1.5 text-[13px] text-[#2F4156]"
+                className="rounded-md border border-[#EEF3F7] bg-white px-2 py-2.5 text-[16px] text-[#2F4156] sm:py-1.5 sm:text-[13px]"
                 style={{ fontWeight: 400 }}
               >
                 {PROTOCOL_CATEGORY_OPTIONS.map((opt) => (
@@ -642,7 +653,7 @@ function DemoProtocolTimelineBlock({
                 value={draft.note}
                 onChange={(e) => setDraft((d) => (d ? { ...d, note: e.target.value } : d))}
                 rows={2}
-                className="resize-y rounded-md border border-[#EEF3F7] bg-white px-2 py-1.5 text-[12px] leading-relaxed text-[#2F4156]"
+                className="resize-y rounded-md border border-[#EEF3F7] bg-white px-2 py-2 text-[16px] leading-relaxed text-[#2F4156] sm:py-1.5 sm:text-[12px]"
                 style={{ fontWeight: 400 }}
                 placeholder="Optional note"
               />
@@ -697,7 +708,7 @@ function FeelingCheckInRow({
               aria-pressed={feeling === key}
               onClick={() => onFeelingChange(key)}
               className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[14px] leading-none transition-opacity",
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px] leading-none transition-opacity sm:h-6 sm:w-6 sm:text-[14px]",
                 feeling === key
                   ? "bg-white/50 opacity-100 ring-1 ring-[#E3EBF2]"
                   : "opacity-45 hover:bg-white/30 hover:opacity-80",
@@ -838,9 +849,12 @@ function TodaysProtocolColumn({
   }, [sortedDemoBlocks, protocolTasks, includeDemoTemplate]);
 
   return (
-    <aside className="flex min-w-0 flex-[2] basis-0 flex-col lg:sticky lg:top-4 lg:self-start lg:pl-8">
+    <aside className="flex min-w-0 flex-[2] basis-0 flex-col border-t border-[#EEF3F7] pt-6 mt-6 lg:mt-0 lg:border-t-0 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:pl-8">
       <p className={COLUMN_EYEBROW_CLASS}>Your protocol</p>
-      <h2 className={cn(SECTION_HEADING_CLASS, "mb-4")}>Today&apos;s protocol</h2>
+      <div className="mb-4 flex items-center gap-2.5">
+        <ProtocolPaneIcon />
+        <h2 className={cn(SECTION_HEADING_CLASS, "mb-0")}>Today&apos;s protocol</h2>
+      </div>
 
       <ul className="m-0 list-none space-y-0 p-0">
         {mergedTimeline.map((entry) => {
@@ -882,7 +896,7 @@ function TodaysProtocolColumn({
                   variant="ghost"
                   disabled={pending}
                   onClick={() => onRemoveFromProtocol(task.id)}
-                  className="h-auto px-2 py-0 text-[10px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D]"
+                  className="h-auto min-h-[44px] px-3 py-2 text-[11px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] sm:min-h-0 sm:px-2 sm:py-0 sm:text-[10px]"
                   style={{ fontWeight: 400 }}
                 >
                   Remove
@@ -923,6 +937,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditError, setTitleEditError] = useState<string | null>(null);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [notesExpandedId, setNotesExpandedId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
   const [planText, setPlanText] = useState<string | null>(null);
@@ -1068,13 +1083,18 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
   function saveTitle(taskId: string) {
     setTitleEditError(null);
+    setIsSavingTitle(true);
     startTransition(async () => {
-      const res = await updateTaskTitle(taskId, titleDraft);
-      if (res.ok) {
-        setEditingTitleId(null);
-        router.refresh();
-      } else {
-        setTitleEditError(res.error);
+      try {
+        const res = await updateTaskTitle(taskId, titleDraft);
+        if (res.ok) {
+          setEditingTitleId(null);
+          router.refresh();
+        } else {
+          setTitleEditError(res.error);
+        }
+      } finally {
+        setIsSavingTitle(false);
       }
     });
   }
@@ -1135,9 +1155,9 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const showAllDoneCelebration = hasAnyTasks && activeCount === 0 && filter !== "done";
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-10 pt-2 sm:px-6 sm:pt-3">
-      <section className="py-0.5">
-        <div className="flex justify-between gap-1 overflow-x-auto pb-0 sm:gap-2 sm:pb-0.5">
+    <div className="mx-auto w-full max-w-[1200px] overflow-x-clip px-3 pb-24 pt-2 sm:px-6 sm:pb-10 sm:pt-3">
+      <section className="py-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] sm:justify-between sm:overflow-x-visible sm:pb-0.5 sm:pt-0">
           {weekDays.map((d, i) => {
             const isToday = isSameDay(d, new Date());
             const isSelected = isSameDay(d, selectedDay);
@@ -1149,7 +1169,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 onClick={() => setSelectedDay(startOfDay(d))}
                 aria-pressed={isSelected}
                 aria-label={`View tasks for ${label}`}
-                className="flex min-w-[2.75rem] flex-1 flex-col items-center gap-1 text-center sm:min-w-0"
+                className="flex min-h-[52px] min-w-[3rem] shrink-0 snap-center flex-col items-center justify-center gap-1 text-center sm:snap-none sm:min-h-0 sm:min-w-0 sm:flex-1"
               >
                 <span
                   className="text-[9px] font-normal uppercase tracking-wide text-[#A9B8C9]"
@@ -1159,7 +1179,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                 </span>
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center text-[13px] font-medium leading-none transition-colors",
+                    "flex h-9 w-9 shrink-0 items-center justify-center text-[14px] font-medium leading-none transition-colors sm:h-7 sm:w-7 sm:text-[13px]",
                     isSelected
                       ? "rounded-full bg-[#2F4156] text-white"
                       : isToday
@@ -1178,7 +1198,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
       <SectionDivider />
 
-      <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+      <div className="mt-6 flex flex-col gap-6 sm:mt-8 sm:gap-8 lg:flex-row lg:items-start lg:gap-10">
         <div className="flex min-h-0 min-w-0 flex-[3] basis-0 flex-col gap-6 lg:border-r lg:border-[#EEF3F7] lg:pr-8">
           <section className="flex flex-col gap-6 py-0">
         <FeelingCheckInRow feeling={feeling} onFeelingChange={setFeeling} />
@@ -1192,7 +1212,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             onChange={(e) => setInput(e.target.value)}
             placeholder="What do you need to do today? Write it like you'd tell a friend..."
             aria-label="New task"
-            className="min-h-[72px] resize-y rounded-[12px] border-[#EEF3F7] bg-white px-4 py-3 text-[15px] font-normal leading-relaxed text-[#2F4156] shadow-none placeholder:text-[#9BAFC0] placeholder:opacity-90 focus-visible:border-[#C8D9E6] focus-visible:ring-1 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-0 disabled:opacity-60 md:text-[15px]"
+            className="min-h-[72px] resize-y rounded-[12px] border-[#EEF3F7] bg-white px-4 py-3 text-[16px] font-normal leading-relaxed text-[#2F4156] shadow-none placeholder:text-[#9BAFC0] placeholder:opacity-90 focus-visible:border-[#C8D9E6] focus-visible:ring-1 focus-visible:ring-[#C8D9E6] focus-visible:ring-offset-0 disabled:opacity-60 sm:text-[15px]"
             style={{ fontWeight: 400 }}
             disabled={pending}
           />
@@ -1201,11 +1221,11 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               {error}
             </p>
           ) : null}
-          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="submit"
               disabled={pending || !input.trim()}
-              className="h-auto w-auto self-start rounded-[8px] border-0 bg-[#2F4156] text-[14px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45"
+              className="h-auto min-h-[48px] w-full rounded-[8px] border-0 bg-[#2F4156] text-[15px] font-medium text-white shadow-none hover:bg-[#2F4156]/95 hover:opacity-100 disabled:opacity-45 sm:w-auto sm:min-h-0 sm:self-start sm:text-[14px]"
               style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               {pending ? "Adding…" : "Add task"}
@@ -1214,7 +1234,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
               type="button"
               disabled={pending || !hasAnyTasks}
               onClick={onWhatNowAndPlan}
-              className="h-auto w-auto self-start rounded-[8px] border-0 bg-[#567C8D] text-[14px] font-medium text-white shadow-none hover:bg-[#567C8D]/92 disabled:opacity-45"
+              className="h-auto min-h-[48px] w-full rounded-[8px] border-0 bg-[#567C8D] text-[15px] font-medium text-white shadow-none hover:bg-[#567C8D]/92 disabled:opacity-45 sm:w-auto sm:min-h-0 sm:self-start sm:text-[14px]"
               style={{ fontWeight: 500, padding: "10px 24px" }}
             >
               What should I do now?
@@ -1230,11 +1250,18 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
             <button
               type="button"
               onClick={() => setInsightsOpen((o) => !o)}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[#F8FAFC]"
+              className="flex w-full min-h-[48px] items-center justify-between gap-2 px-3 py-3 text-left transition-colors hover:bg-[#F8FAFC] sm:min-h-0 sm:py-2.5"
               aria-expanded={insightsOpen}
             >
               <span className="text-[12px] font-medium text-[#567C8D]" style={{ fontWeight: 500 }}>
-                {insightsOpen ? "Hide suggestions" : "Show suggestions (top picks & today’s plan)"}
+                {insightsOpen ? (
+                  "Hide suggestions"
+                ) : (
+                  <>
+                    <span className="sm:hidden">Show suggestions</span>
+                    <span className="hidden sm:inline">Show suggestions (top picks & today’s plan)</span>
+                  </>
+                )}
               </span>
               {insightsOpen ? (
                 <ChevronUp className="h-4 w-4 shrink-0 text-[#567C8D]" aria-hidden />
@@ -1417,14 +1444,14 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                         aria-hidden
                       />
 
-                      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:pr-3">
+                      <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:p-4 sm:pr-3">
                         <div className="flex min-w-0 flex-1 gap-3">
                           <div className="mt-0.5 flex shrink-0 items-start pt-0.5">
                             <Checkbox
                               checked={task.done}
                               onCheckedChange={(v) => onToggleDone(task.id, v === true)}
                               aria-label={`Mark done: ${task.title}`}
-                              className="h-[22px] w-[22px] rounded-full border-[1.5px] border-[#C8D9E6] bg-white text-white shadow-none ring-offset-0 focus-visible:ring-[#C8D9E6] data-[state=checked]:border-[#3A8D84] data-[state=checked]:bg-[#3A8D84] data-[state=checked]:text-white data-[state=unchecked]:bg-white [&_svg]:h-2.5 [&_svg]:w-2.5"
+                              className="h-[26px] w-[26px] rounded-full border-[1.5px] border-[#C8D9E6] bg-white text-white shadow-none ring-offset-0 focus-visible:ring-[#C8D9E6] data-[state=checked]:border-[#3A8D84] data-[state=checked]:bg-[#3A8D84] data-[state=checked]:text-white data-[state=unchecked]:bg-white sm:h-[22px] sm:w-[22px] [&_svg]:h-2.5 [&_svg]:w-2.5"
                             />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1434,8 +1461,8 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                   type="text"
                                   value={titleDraft}
                                   onChange={(e) => setTitleDraft(e.target.value)}
-                                  disabled={pending}
-                                  className="w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2 text-[15px] font-medium leading-snug text-[#2F4156] focus-visible:border-[#C8D9E6] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C8D9E6]"
+                                  disabled={isSavingTitle}
+                                  className="w-full rounded-[8px] border border-[#EEF3F7] bg-white px-3 py-2 text-[16px] font-medium leading-snug text-[#2F4156] focus-visible:border-[#C8D9E6] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C8D9E6] sm:text-[15px]"
                                   style={{ fontWeight: 500 }}
                                   aria-label="Edit task title"
                                 />
@@ -1443,18 +1470,18 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                   <Button
                                     type="button"
                                     size="sm"
-                                    disabled={pending}
+                                    disabled={isSavingTitle}
                                     onClick={() => saveTitle(task.id)}
                                     className="h-auto rounded-[8px] bg-[#2F4156] px-3 py-1.5 text-[12px] text-white"
                                     style={{ fontWeight: 500 }}
                                   >
-                                    Save
+                                    {isSavingTitle ? "Saving…" : "Save"}
                                   </Button>
                                   <Button
                                     type="button"
                                     size="sm"
                                     variant="ghost"
-                                    disabled={pending}
+                                    disabled={isSavingTitle}
                                     onClick={cancelTitleEdit}
                                     className="h-auto px-3 py-1.5 text-[12px] text-[#567C8D]"
                                     style={{ fontWeight: 500 }}
@@ -1478,9 +1505,8 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                             ) : (
                               <button
                                 type="button"
-                                disabled={pending}
                                 onClick={() => beginTitleEdit(task)}
-                                className="w-full text-left text-[15px] font-medium leading-snug text-[#2F4156] hover:underline disabled:opacity-60"
+                                className="w-full cursor-pointer text-left text-[15px] font-medium leading-snug text-[#2F4156] hover:underline"
                                 style={{ fontWeight: 500 }}
                               >
                                 {task.title}
@@ -1514,7 +1540,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                                     rows={3}
                                     disabled={pending}
                                     placeholder="Your note…"
-                                    className="resize-y rounded-[10px] border-[#EEF3F7] text-[13px] text-[#2F4156]"
+                                    className="resize-y rounded-[10px] border-[#EEF3F7] text-[16px] text-[#2F4156] sm:text-[13px]"
                                     style={{ fontWeight: 400 }}
                                     aria-label="Task note"
                                   />
@@ -1738,7 +1764,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
                           type="button"
                           variant="ghost"
                           onClick={() => removeTask(task.id)}
-                          className="h-auto shrink-0 self-start px-1 py-0 pt-0.5 text-[12px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D]"
+                          className="h-auto min-h-[44px] shrink-0 self-end px-3 py-2 text-[13px] font-normal text-[#9BAFC0] hover:bg-transparent hover:text-[#567C8D] sm:min-h-0 sm:self-start sm:px-1 sm:py-0 sm:pt-0.5 sm:text-[12px]"
                           style={{ fontWeight: 400 }}
                         >
                           Delete

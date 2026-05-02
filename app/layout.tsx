@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 
 import { SiteNav } from "@/components/SiteNav";
@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   description: "Create your perfect day — tasks in natural language.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#ffffff",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,9 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-[#FFFFFF] font-[family-name:var(--font-dm-sans)] text-[#2F4156]">
+      <body className="flex min-h-full flex-col bg-[#FFFFFF] pb-[env(safe-area-inset-bottom,0px)] font-[family-name:var(--font-dm-sans)] text-[#2F4156]">
         <SiteNav />
-        <div className="min-h-0 flex-1">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1">{children}</div>
       </body>
     </html>
   );
