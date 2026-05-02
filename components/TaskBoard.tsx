@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import {
@@ -302,6 +302,12 @@ function isSameDay(a: Date, b: Date) {
 function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addDays(d: Date, delta: number) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + delta);
   return x;
 }
 
@@ -736,12 +742,14 @@ function TodaysProtocolColumn({
   onRemoveFromProtocol,
   pending,
   includeDemoTemplate,
+  selectedDay,
 }: {
   protocolTasks: TaskDTO[];
   onRemoveFromProtocol: (id: string) => void;
   pending: boolean;
   /** When false (viewing another calendar day), only list tasks — no sample routine blocks. */
   includeDemoTemplate: boolean;
+  selectedDay: Date;
 }) {
   const [demoBlocks, setDemoBlocks] = useState<DemoProtocolBlock[]>(() => [...INITIAL_DEMO_PROTOCOL]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -848,12 +856,17 @@ function TodaysProtocolColumn({
     return entries;
   }, [sortedDemoBlocks, protocolTasks, includeDemoTemplate]);
 
+  const viewingActualToday = isSameDay(selectedDay, new Date());
+  const protocolTitle = viewingActualToday
+    ? "Today's protocol"
+    : `Protocol — ${selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`;
+
   return (
     <aside className="flex min-w-0 flex-[2] basis-0 flex-col border-t border-[#EEF3F7] pt-6 mt-6 lg:mt-0 lg:border-t-0 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:pl-8">
       <p className={COLUMN_EYEBROW_CLASS}>Your protocol</p>
       <div className="mb-4 flex items-center gap-2.5">
         <ProtocolPaneIcon />
-        <h2 className={cn(SECTION_HEADING_CLASS, "mb-0")}>Today&apos;s protocol</h2>
+        <h2 className={cn(SECTION_HEADING_CLASS, "mb-0 leading-tight")}>{protocolTitle}</h2>
       </div>
 
       <ul className="m-0 list-none space-y-0 p-0">
@@ -954,6 +967,19 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
   const tasks = initialTasks;
 
   const weekDays = useMemo(() => weekDaysMondayFirst(selectedDay), [selectedDay]);
+  const weekStripRef = useRef<HTMLDivElement>(null);
+  const skipNextWeekStripScroll = useRef(true);
+
+  useLayoutEffect(() => {
+    const root = weekStripRef.current;
+    if (!root) return;
+    if (skipNextWeekStripScroll.current) {
+      skipNextWeekStripScroll.current = false;
+      return;
+    }
+    const el = root.querySelector<HTMLElement>('[aria-pressed="true"]');
+    el?.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+  }, [selectedDay]);
 
   const visible = useMemo(() => {
     if (filter === "active") return tasks.filter((t) => !t.done);
@@ -1009,9 +1035,6 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
       const res = await createTaskFromText(text);
       if (res.ok) {
         setInput("");
-        if (res.deadline) {
-          setSelectedDay(startOfDay(new Date(res.deadline)));
-        }
         router.refresh();
       } else {
         setError(res.error);
@@ -1156,43 +1179,80 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
 
   return (
     <div className="mx-auto w-full max-w-[1200px] overflow-x-clip px-3 pb-24 pt-2 handset:px-6 handset:pb-10 handset:pt-3">
-      <section className="py-0.5 -mx-1 px-1 handset:mx-0 handset:px-0">
-        <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] handset:justify-between handset:overflow-x-visible handset:pb-0.5 handset:pt-0">
-          {weekDays.map((d, i) => {
-            const isToday = isSameDay(d, new Date());
-            const isSelected = isSameDay(d, selectedDay);
-            const label = `${WEEKDAY_SHORT[i]} ${d.getDate()}`;
-            return (
-              <button
-                key={`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
-                type="button"
-                onClick={() => setSelectedDay(startOfDay(d))}
-                aria-pressed={isSelected}
-                aria-label={`View tasks for ${label}`}
-                className="flex min-h-[52px] min-w-[3rem] shrink-0 snap-center flex-col items-center justify-center gap-1 text-center handset:snap-none handset:min-h-0 handset:min-w-0 handset:flex-1"
-              >
-                <span
-                  className="text-[9px] font-normal uppercase tracking-wide text-[#A9B8C9]"
-                  style={{ fontWeight: 400 }}
-                >
-                  {WEEKDAY_SHORT[i]}
-                </span>
-                <span
-                  className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center text-[14px] font-medium leading-none transition-colors handset:h-7 handset:w-7 handset:text-[13px]",
-                    isSelected
-                      ? "rounded-full bg-[#2F4156] text-white"
-                      : isToday
-                        ? "rounded-full bg-[#567C8D] text-white"
-                        : "rounded-full text-[#5F7082] hover:bg-[#F5EFEB]",
-                  )}
-                  style={{ fontWeight: 500 }}
-                >
-                  {d.getDate()}
-                </span>
-              </button>
-            );
-          })}
+      <section className="py-0.5 -mx-1 px-1 handset:mx-0 handset:px-0" aria-label="Week calendar">
+        <div className="flex flex-col gap-2 handset:flex-row handset:items-stretch handset:gap-2">
+          <div className="flex min-w-0 flex-1 items-stretch gap-1 handset:gap-2">
+            <button
+              type="button"
+              aria-label="Previous week"
+              onClick={() => setSelectedDay(startOfDay(addDays(selectedDay, -7)))}
+              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] handset:min-h-0 handset:w-8"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </button>
+            <div
+              ref={weekStripRef}
+              className="flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] handset:justify-between handset:overflow-x-visible handset:pb-0.5 handset:pt-0"
+            >
+              {weekDays.map((d, i) => {
+                const isToday = isSameDay(d, new Date());
+                const isSelected = isSameDay(d, selectedDay);
+                const label = `${WEEKDAY_SHORT[i]} ${d.getDate()}`;
+                return (
+                  <button
+                    key={`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
+                    type="button"
+                    onClick={() => setSelectedDay(startOfDay(d))}
+                    aria-pressed={isSelected}
+                    aria-label={`View tasks for ${label}`}
+                    className="flex min-h-[52px] min-w-[3rem] shrink-0 snap-center flex-col items-center justify-center gap-1 text-center handset:snap-none handset:min-h-0 handset:min-w-0 handset:flex-1"
+                  >
+                    <span
+                      className="text-[9px] font-normal uppercase tracking-wide text-[#A9B8C9]"
+                      style={{ fontWeight: 400 }}
+                    >
+                      {WEEKDAY_SHORT[i]}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center text-[14px] font-medium leading-none transition-colors handset:h-7 handset:w-7 handset:text-[13px]",
+                        isSelected
+                          ? "rounded-full bg-[#2F4156] text-white"
+                          : isToday
+                            ? "rounded-full bg-[#567C8D] text-white"
+                            : "rounded-full text-[#5F7082] hover:bg-[#F5EFEB]",
+                      )}
+                      style={{ fontWeight: 500 }}
+                    >
+                      {d.getDate()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              aria-label="Next week"
+              onClick={() => setSelectedDay(startOfDay(addDays(selectedDay, 7)))}
+              className="flex h-auto min-h-[44px] w-9 shrink-0 items-center justify-center rounded-lg border border-[#EEF3F7] bg-white text-[#567C8D] transition hover:bg-[#F8FAFC] hover:text-[#2F4156] handset:min-h-0 handset:w-8"
+            >
+              <ChevronRight className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+          <Button
+            type="button"
+            variant={isSameDay(selectedDay, new Date()) ? "secondary" : "default"}
+            onClick={() => setSelectedDay(startOfDay(new Date()))}
+            className={cn(
+              "h-auto min-h-[48px] w-full shrink-0 rounded-full px-4 py-2.5 text-[14px] font-semibold shadow-none handset:min-h-0 handset:w-auto handset:self-center handset:px-4 handset:py-1.5 handset:text-[13px]",
+              isSameDay(selectedDay, new Date())
+                ? "border border-[#EEF3F7] bg-[#F5EFEB] text-[#567C8D] hover:bg-[#F5EFEB]"
+                : "border-0 bg-[#2F4156] text-white hover:bg-[#2F4156]/95",
+            )}
+            style={{ fontWeight: 600 }}
+          >
+            Today
+          </Button>
         </div>
       </section>
 
@@ -1784,6 +1844,7 @@ export function TaskBoard({ initialTasks }: { initialTasks: TaskDTO[] }) {
           protocolTasks={protocolTasks}
           pending={pending}
           includeDemoTemplate={includeDemoTemplate}
+          selectedDay={selectedDay}
           onRemoveFromProtocol={(id) => toggleProtocolApproved(id, false)}
         />
       </div>
